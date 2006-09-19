@@ -1,0 +1,17 @@
+name: zlib
+version: 0.1
+copyright: (c) 2006 Duncan Coutts
+build-depends: base, fps
+license: BSD3
+author: Duncan Coutts <duncan.coutts@worc.ox.ac.uk>
+maintainer: Duncan Coutts <duncan.coutts@worc.ox.ac.uk>
+synopsis: Compression and decompression in the gzip and zlib formats
+exposed-modules: Codec.Compression.GZip,
+                 Codec.Compression.Zlib,
+                 Codec.Compression.Zlib.Raw,
+                 Codec.Compression.Zlib.Internal
+other-modules: Codec.Compression.Zlib.Stream
+extensions: ForeignFunctionInterface
+includes: zlib.h
+extra-libraries: z
+ghc-options: -fvia-C -Wall
