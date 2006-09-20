@@ -12,6 +12,8 @@
 -- The format is described in detail in RFC #1951:
 -- <http://www.ietf.org/rfc/rfc1951.txt>
 --
+-- See also the zlib home page: <http://zlib.net/>
+--
 -----------------------------------------------------------------------------
 module Codec.Compression.Zlib.Raw (
   

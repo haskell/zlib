@@ -12,6 +12,8 @@
 -- The format is described in detail in RFC #1952:
 -- <http://www.ietf.org/rfc/rfc1952.txt>
 --
+-- See also the zlib home page: <http://zlib.net/>
+--
 -----------------------------------------------------------------------------
 module Codec.Compression.GZip (
   
