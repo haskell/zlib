@@ -11,17 +11,17 @@
 --
 -----------------------------------------------------------------------------
 module Codec.Compression.Zlib.Stream (
-  
+
   -- * The Zlib state monad
   Stream,
   run,
   unsafeInterleave,
   unsafeLiftIO,
-  
+
   -- * Initialisation
   deflateInit, 
   inflateInit,
-  
+
   -- ** Initialisation parameters
   Format(..),
   CompressionLevel(..),
@@ -79,7 +79,7 @@ pushInputBuffer inBuf' offset length = do
   -- at which the old buffer had to be retained. It's safe to release now.
   inBuf <- getInBuf 
   unsafeLiftIO $ touchForeignPtr inBuf    
- 
+
   -- now set the available input buffer ptr and length
   setInBuf   inBuf'
   setInAvail length
@@ -105,7 +105,7 @@ pushOutputBuffer outBuf' offset length = do
 
   outBuf <- getOutBuf
   unsafeLiftIO $ touchForeignPtr outBuf
-    
+
   -- now set the available input buffer ptr and length
   setOutBuf  outBuf'
   setOutFree length
@@ -128,10 +128,10 @@ popOutputBuffer = do
 
   -- there really should be something to pop, otherwise it's silly
   assert (outAvail > 0) $ return ()
-  
+
   setOutOffset (outOffset + outAvail)
   setOutAvail  0
-  
+
   return (outBuf, outOffset, outAvail)
 
 
@@ -159,7 +159,7 @@ outputBufferFull = getOutFree >>= return . (==0)
 deflate :: Flush -> Stream Status
 deflate flush = do
 
-  outFree <- getOutFree 
+  outFree <- getOutFree
 
   -- deflate needs free space in the output buffer
   assert (outFree > 0) $ return ()
@@ -179,14 +179,14 @@ deflate flush = do
 inflate :: Flush -> Stream Status
 inflate flush = do
 
-  outFree <- getOutFree 
+  outFree <- getOutFree
 
   -- inflate needs free space in the output buffer
   assert (outFree > 0) $ return ()
 
   result <- inflate_ flush
   outFree' <- getOutFree
-    
+
   -- number of bytes of extra output there is available as a result of
   -- the call to inflate:
   let outExtra = outFree - outFree'
@@ -311,7 +311,7 @@ setOutAvail outLength = Z $ \_stream inBuf outBuf outOffset _ -> do
 --
 
 trace :: String -> Stream ()
-trace = unsafeLiftIO . putStrLn 
+trace = unsafeLiftIO . putStrLn
 
 dump :: Stream ()
 dump = do
@@ -322,7 +322,7 @@ dump = do
   outFree <- getOutFree
   outAvail <- getOutAvail
   outOffset <- getOutOffset
-  
+
   unsafeLiftIO $ putStrLn $
     "Stream {\n" ++
     "  inNext    = " ++ show inNext    ++ ",\n" ++
@@ -459,7 +459,7 @@ instance Enum MemoryLevel where
   fromEnum (MemoryLevel n)
            | n >= 1 && n <= 9 = n
            | otherwise        = error "MemoryLevel must be in the range 1..9"
-  
+
 
 -- | The strategy parameter is used to tune the compression algorithm.
 --

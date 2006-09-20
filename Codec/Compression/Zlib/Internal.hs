@@ -11,13 +11,13 @@
 --
 -----------------------------------------------------------------------------
 module Codec.Compression.Zlib.Internal (
-  
+
   -- * Compression and decompression
   compressDefault,
   decompressDefault,
   Stream.Format(..),
   Stream.CompressionLevel(..),
-  
+
   -- * The same but with the full set of parameters
   compressFull,
   decompressFull,
@@ -102,9 +102,9 @@ compressFull format compLevel method bits memLevel strategy (LPS chunks) =
     --       - in which case we must supply more
     inputBufferEmpty <- Stream.inputBufferEmpty
     outputBufferFull <- Stream.outputBufferFull
-    
+
     assert (inputBufferEmpty || outputBufferFull) $ return ()
-    
+
     when outputBufferFull $ do
       outFPtr <- Stream.unsafeLiftIO (Base.mallocByteString outChunkSize)
       Stream.pushOutputBuffer outFPtr 0 outChunkSize
@@ -191,7 +191,7 @@ decompressFull format bits (LPS chunks) =
     --       - in which case we must supply more
     inputBufferEmpty <- Stream.inputBufferEmpty
     outputBufferFull <- Stream.outputBufferFull
-    
+
     assert (inputBufferEmpty || outputBufferFull) $ return ()
 
     when outputBufferFull $ do
