@@ -1,5 +1,5 @@
 name: zlib
-version: 0.1
+version: 0.2
 copyright: (c) 2006 Duncan Coutts
 build-depends: base, fps
 license: BSD3
