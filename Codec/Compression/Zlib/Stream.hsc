@@ -358,7 +358,7 @@ data Status =
   | StreamEnd
   | NeedDict
   | BufferError -- ^ No progress was possible or there was not enough room in
-                --   the output buffer when Z_FINISH is used. Note that
+                --   the output buffer when 'Finish' is used. Note that
                 --   'BuferError' is not fatal, and 'inflate' can be called
                 --   again with more input and more output space to continue.
   deriving Show
