@@ -50,7 +50,7 @@ compressDefault format compressionLevel =
                Stream.Deflated
                Stream.DefaultWindowBits
                Stream.DefaultMemoryLevel
-               Stream.DefaultStrategy               
+               Stream.DefaultStrategy
 
 decompressDefault
   :: Stream.Format

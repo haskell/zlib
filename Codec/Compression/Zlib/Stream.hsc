@@ -35,7 +35,7 @@ module Codec.Compression.Zlib.Stream (
   inflate,
   Status(..),
   Flush(..),
-  
+
   -- * Buffer management
   -- ** Input buffer
   pushInputBuffer,
