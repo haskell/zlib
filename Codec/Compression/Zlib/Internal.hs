@@ -127,8 +127,8 @@ compressFull format compLevel method bits memLevel strategy (LPS chunks) =
     outputBufferFull' <- Stream.outputBufferFull
     assert(not outputBufferFull'
        && (null inChunks || not inputBufferEmpty')) $ return ()
-    -- this invariant guarantees we can't get status == BufferError since
-    -- we can always make forward progress
+    -- this invariant guarantees we cancan always make forward progress
+    -- and that therefore a BufferError is impossible
 
     let flush = if null inChunks then Stream.Finish else Stream.NoFlush
     status <- Stream.deflate flush
@@ -216,8 +216,8 @@ decompressFull format bits (LPS chunks) =
     outputBufferFull' <- Stream.outputBufferFull
     assert(not outputBufferFull'
        && (null inChunks || not inputBufferEmpty')) $ return ()
-    -- this invariant guarantees we can't get status == BufferError since
-    -- we can always make forward progress
+    -- this invariant guarantees we can always make forward progress or that
+    -- if a BufferError does occur that it must be due to a premature EOF
 
     status <- Stream.inflate Stream.NoFlush
 
