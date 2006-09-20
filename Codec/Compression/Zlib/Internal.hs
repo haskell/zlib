@@ -239,5 +239,5 @@ decompressFull format bits (LPS chunks) =
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   return (Base.PS outFPtr offset length : [])
           else do return []
-      Stream.BufferError -> error "premature end of compressed stream"
-      Stream.NeedDict    -> error "compressed stream needs a custom dictionary"
+      Stream.BufferError -> fail "premature end of compressed stream"
+      Stream.NeedDict    -> fail "compressed stream needs a custom dictionary"
