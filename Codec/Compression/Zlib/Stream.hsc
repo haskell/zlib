@@ -361,7 +361,6 @@ data Status =
                 --   the output buffer when 'Finish' is used. Note that
                 --   'BuferError' is not fatal, and 'inflate' can be called
                 --   again with more input and more output space to continue.
-  deriving Show
 
 instance Enum Status where
   toEnum (#{const Z_OK})         = Ok
@@ -387,7 +386,6 @@ data Flush =
   | FullFlush
   | Finish
   | Block
-  deriving (Eq, Show)
 
 instance Enum Flush where
   fromEnum NoFlush   = #{const Z_NO_FLUSH}
