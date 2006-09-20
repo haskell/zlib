@@ -28,6 +28,9 @@ module Codec.Compression.Zlib.Internal (
 
   ) where
 
+import Prelude hiding (length)
+import Control.Monad (liftM, when)
+import Control.Exception (assert)
 import qualified Data.ByteString.Lazy as Lazy
 import qualified Data.ByteString as Strict
 import qualified Data.ByteString.Base as Base
@@ -35,9 +38,6 @@ import Data.ByteString.Base (LazyByteString(LPS))
 
 import qualified Codec.Compression.Zlib.Stream as Stream
 import Codec.Compression.Zlib.Stream (Stream)
-
-import Control.Monad (liftM, liftM2)
-import Prelude hiding (length)
 
 compressDefault
   :: Stream.Format
@@ -73,12 +73,16 @@ compressFull
 compressFull format compLevel method bits memLevel strategy (LPS chunks) =
   Stream.run $ do
     Stream.deflateInit format compLevel method bits memLevel strategy
-    liftM LPS (fillBuffers Stream.NoFlush chunks)
+    case chunks of
+      [] -> liftM LPS (fillBuffers [])
+      (Base.PS inFPtr offset length : chunks') -> do
+        Stream.pushInputBuffer inFPtr offset length
+        liftM LPS (fillBuffers chunks')
 
   where
   outChunkSize :: Int
-  outChunkSize = 32 * 1024 - 16
-  
+  outChunkSize = 16 * 1024 - 16
+
     -- we flick between two states:
     --   * where one or other buffer is empty
     --       - in which case we refill one or both
@@ -86,74 +90,69 @@ compressFull format compLevel method bits memLevel strategy (LPS chunks) =
     --       - in which case we compress until a buffer is empty
 
   fillBuffers ::
-      Stream.Flush
-   -> [Strict.ByteString]
+      [Strict.ByteString]
    -> Stream [Strict.ByteString]
-  fillBuffers flush inChunks = do
-    Stream.trace "fillBuffers"
-    Stream.dump
+  fillBuffers inChunks = do
+    Stream.consistencyCheck
 
     -- in this state there are two possabilities:
     --   * no outbut buffer space is available
     --       - in which case we must make more available
     --   * no input buffer is available
     --       - in which case we must supply more
-    Stream.assert "one or other buffer must be empty"
-      (liftM2 (||) Stream.inputBufferEmpty Stream.outputBufferFull)
-
+    inputBufferEmpty <- Stream.inputBufferEmpty
     outputBufferFull <- Stream.outputBufferFull
-    if outputBufferFull
-      then do -- make output space available and call deflate
-              -- note that we must do this even if the input buffer is also empty
-              -- since that's a normal circumstance when the final input buffer
-              -- has been pushed. Since at that point we flush the compressor and
-              -- so may produce a few more output chunks without providing any
-              -- more input. The compressor adds a fair bit of latency.
-              Stream.trace "no space in output buffer"
-              outFPtr <- Stream.unsafeLiftIO (Base.mallocByteString outChunkSize)
-              Stream.pushOutputBuffer outFPtr 0 outChunkSize
-              Stream.trace "pushed output buffer"
-              Stream.dump
-              drainBuffers flush inChunks
+    
+    assert (inputBufferEmpty || outputBufferFull) $ return ()
+    
+    when outputBufferFull $ do
+      outFPtr <- Stream.unsafeLiftIO (Base.mallocByteString outChunkSize)
+      Stream.pushOutputBuffer outFPtr 0 outChunkSize
 
-      else do -- if there is output space available then it must
-           -- be the case that we ran out of input space           
-           Stream.trace "no space in input buffer"
-           case inChunks of
-             [] -> Stream.trace "inChunks empty" >> return []
+    if inputBufferEmpty
+      then case inChunks of
+             [] -> drainBuffers []
              (Base.PS inFPtr offset length : inChunks') -> do
-
                 Stream.pushInputBuffer inFPtr offset length
-                let flush' = if null inChunks' then Stream.Finish else Stream.NoFlush
-                Stream.trace "pushed input buffer"
-                Stream.dump
-                drainBuffers flush' inChunks'
+                drainBuffers inChunks'
+      else drainBuffers inChunks
+
 
   drainBuffers ::
-      Stream.Flush
-   -> [Strict.ByteString]
+      [Strict.ByteString]
    -> Stream [Strict.ByteString]
-  drainBuffers flush inChunks = do
-    Stream.trace "drainBuffers"
+  drainBuffers inChunks = do
 
+    inputBufferEmpty' <- Stream.inputBufferEmpty
+    outputBufferFull' <- Stream.outputBufferFull
+    assert(not outputBufferFull'
+       && (null inChunks || not inputBufferEmpty')) $ return ()
+    -- this invariant guarantees we can't get status == BufferError since
+    -- we can always make forward progress
+
+    let flush = if null inChunks then Stream.Finish else Stream.NoFlush
     status <- Stream.deflate flush
 
-    Stream.trace $ "deflated: " ++ show status
-    Stream.dump
+    case status of
+      Stream.Ok -> do
+        outputBufferFull <- Stream.outputBufferFull
+        if outputBufferFull
+          then do (outFPtr, offset, length) <- Stream.popOutputBuffer
+                  outChunks <- Stream.unsafeInterleave (fillBuffers inChunks)
+                  return (Base.PS outFPtr offset length : outChunks)
+          else do fillBuffers inChunks
 
-    outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
-    if outputBufferBytesAvailable > 0
-      then do Stream.trace "positive output bytes available, poping buffer"
-              (outFPtr, offset, length) <- Stream.popOutputBuffer
-              Stream.trace "poped buffer"
-              Stream.dump
-              Stream.trace "suspend outChunks"
-              outChunks <- Stream.unsafeInterleave (Stream.trace "force outChunks"
-                             >> fillBuffers flush inChunks)
-              Stream.trace "return chunk"
-              return (Base.PS outFPtr offset length : outChunks)
-      else do Stream.trace "no output available, filling buffers again"
-              fillBuffers flush inChunks
+      Stream.StreamEnd -> do
+        inputBufferEmpty <- Stream.inputBufferEmpty
+        assert inputBufferEmpty $ return ()
+        outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
+        if outputBufferBytesAvailable > 0
+          then do (outFPtr, offset, length) <- Stream.popOutputBuffer
+                  return (Base.PS outFPtr offset length : [])
+          else do return []
+      Stream.BufferError -> fail "BufferError should be impossible!"
+      Stream.NeedDict    -> fail "NeedDict is impossible!"
+
 
 {-# NOINLINE decompressFull #-}
 decompressFull
@@ -164,75 +163,81 @@ decompressFull
 decompressFull format bits (LPS chunks) =
   Stream.run $ do
     Stream.inflateInit format bits
-    liftM LPS (fillBuffers chunks)
+    case chunks of
+      [] -> liftM LPS (fillBuffers [])
+      (Base.PS inFPtr offset length : chunks') -> do
+        Stream.pushInputBuffer inFPtr offset length
+        liftM LPS (fillBuffers chunks')
 
   where
   outChunkSize :: Int
   outChunkSize = 32 * 1024 - 16
 
+    -- we flick between two states:
+    --   * where one or other buffer is empty
+    --       - in which case we refill one or both
+    --   * where both buffers are non-empty
+    --       - in which case we compress until a buffer is empty
+
   fillBuffers ::
       [Strict.ByteString]
    -> Stream [Strict.ByteString]
   fillBuffers inChunks = do
-    Stream.trace "fillBuffers"
-    Stream.dump
 
     -- in this state there are two possabilities:
     --   * no outbut buffer space is available
     --       - in which case we must make more available
     --   * no input buffer is available
     --       - in which case we must supply more
-    Stream.assert "one or other buffer must be empty"
-      (liftM2 (||) Stream.inputBufferEmpty Stream.outputBufferFull)
-
+    inputBufferEmpty <- Stream.inputBufferEmpty
     outputBufferFull <- Stream.outputBufferFull
-    if outputBufferFull
-      then do -- make output space available and call inflate
-              -- note that we must do this even if the input buffer is also empty
-              -- since that's a normal circumstance when the final input buffer
-              -- has been pushed. Since at that point we flush the compressor and
-              -- so may produce a few more output chunks without providing any
-              -- more input. The compressor adds a fair bit of latency.
-              Stream.trace "no space in output buffer"
-              outFPtr <- Stream.unsafeLiftIO (Base.mallocByteString outChunkSize)
-              Stream.pushOutputBuffer outFPtr 0 outChunkSize
-              Stream.trace "pushed output buffer"
-              Stream.dump
-              drainBuffers inChunks
+    
+    assert (inputBufferEmpty || outputBufferFull) $ return ()
 
-      else do -- if there is output space available then it must
-           -- be the case that we ran out of input space           
-           Stream.trace "no space in input buffer"
-           case inChunks of
-             [] -> Stream.trace "inChunks empty" >> return []
+    when outputBufferFull $ do
+      outFPtr <- Stream.unsafeLiftIO (Base.mallocByteString outChunkSize)
+      Stream.pushOutputBuffer outFPtr 0 outChunkSize
+
+    if inputBufferEmpty
+      then case inChunks of
+             [] -> drainBuffers []
              (Base.PS inFPtr offset length : inChunks') -> do
-
                 Stream.pushInputBuffer inFPtr offset length
-                Stream.trace "pushed input buffer"
-                Stream.dump
                 drainBuffers inChunks'
+      else drainBuffers inChunks
+
 
   drainBuffers ::
       [Strict.ByteString]
    -> Stream [Strict.ByteString]
   drainBuffers inChunks = do
-    Stream.trace "drainBuffers"
+
+    inputBufferEmpty' <- Stream.inputBufferEmpty
+    outputBufferFull' <- Stream.outputBufferFull
+    assert(not outputBufferFull'
+       && (null inChunks || not inputBufferEmpty')) $ return ()
+    -- this invariant guarantees we can't get status == BufferError since
+    -- we can always make forward progress
 
     status <- Stream.inflate Stream.NoFlush
 
-    Stream.trace $ "inflated: " ++ show status
-    Stream.dump
+    case status of
+      Stream.Ok -> do
+        outputBufferFull <- Stream.outputBufferFull
+        if outputBufferFull
+          then do (outFPtr, offset, length) <- Stream.popOutputBuffer
+                  outChunks <- Stream.unsafeInterleave (fillBuffers inChunks)
+                  return (Base.PS outFPtr offset length : outChunks)
+          else do fillBuffers inChunks
 
-    outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
-    if outputBufferBytesAvailable > 0
-      then do Stream.trace "positive output bytes available, poping buffer"
-              (outFPtr, offset, length) <- Stream.popOutputBuffer
-              Stream.trace "poped buffer"
-              Stream.dump
-              Stream.trace "suspend outChunks"
-              outChunks <- Stream.unsafeInterleave (Stream.trace "force outChunks"
-                             >> fillBuffers inChunks)
-              Stream.trace "return chunk"
-              return (Base.PS outFPtr offset length : outChunks)
-      else do Stream.trace "no output available, filling buffers again"
-              fillBuffers inChunks
+      Stream.StreamEnd -> do
+        -- Note that there may be input bytes still available if the stream
+        -- is embeded in some other data stream. Here we just silently discard
+        -- any trailing data.
+        outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
+        if outputBufferBytesAvailable > 0
+          then do (outFPtr, offset, length) <- Stream.popOutputBuffer
+                  return (Base.PS outFPtr offset length : [])
+          else do return []
+      Stream.BufferError -> error "premature end of compressed stream"
+      Stream.NeedDict    -> error "compressed stream needs a custom dictionary"
