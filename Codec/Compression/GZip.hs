@@ -28,7 +28,7 @@ module Codec.Compression.GZip (
   -- >
   -- > main = ByteString.interact GZip.compress
   --
-  -- Or you could lazily read in and decompresse @.gz@ file using:
+  -- Or you could lazily read in and decompress a @.gz@ file using:
   --
   -- > content <- fmap GZip.decompress (readFile file)
   --
