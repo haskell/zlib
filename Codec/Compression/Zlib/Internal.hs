@@ -148,8 +148,10 @@ compressFull format compLevel method bits memLevel strategy (LPS chunks) =
         outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
         if outputBufferBytesAvailable > 0
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
+                  Stream.finalise
                   return (Base.PS outFPtr offset length : [])
-          else do return []
+          else do Stream.finalise
+                  return []
       Stream.BufferError -> fail "BufferError should be impossible!"
       Stream.NeedDict    -> fail "NeedDict is impossible!"
 
@@ -237,7 +239,9 @@ decompressFull format bits (LPS chunks) =
         outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
         if outputBufferBytesAvailable > 0
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
+                  Stream.finalise
                   return (Base.PS outFPtr offset length : [])
-          else do return []
+          else do Stream.finalise
+                  return []
       Stream.BufferError -> fail "premature end of compressed stream"
       Stream.NeedDict    -> fail "compressed stream needs a custom dictionary"

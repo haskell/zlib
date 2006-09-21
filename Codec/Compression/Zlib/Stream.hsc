@@ -17,6 +17,7 @@ module Codec.Compression.Zlib.Stream (
   run,
   unsafeInterleave,
   unsafeLiftIO,
+  finalise,
 
   -- * Initialisation
   deflateInit, 
@@ -215,7 +216,7 @@ instance Monad Stream where
 --  m >>= f = (m `thenZ` \a -> consistencyCheck `thenZ_` returnZ a) `thenZ` f
   (>>)   = thenZ_
   return = returnZ
-  fail   = failZ
+  fail   = (finalise >>) . failZ
 
 returnZ :: a -> Stream a
 returnZ a = Z $ \_ inBuf outBuf outOffset outLength ->
@@ -558,19 +559,23 @@ inflate_ :: Flush -> Stream Status
 inflate_ flush = do
   err <- withStreamPtr (\ptr -> c_inflate ptr (fromIntegral (fromEnum flush)))
   if isFatalError err
-    then do
-      getStreamState >>= unsafeLiftIO . finalizeForeignPtr
-      throwError
+    then throwError
     else return (toEnum (fromIntegral err))
 
 deflate_ :: Flush -> Stream Status
 deflate_ flush = do
   err <- withStreamPtr (\ptr -> c_deflate ptr (fromIntegral (fromEnum flush)))
   if isFatalError err
-    then do
-      getStreamState >>= unsafeLiftIO . finalizeForeignPtr
-      throwError
+    then throwError
     else return (toEnum (fromIntegral err))
+
+-- | This never needs to be used as the stream's resources will be released
+-- automatically when no longer needed, however this can be used to release
+-- them early. Only use this when you can guarantee that the stream will no
+-- longer be needed, for example if an error occurs or if the stream ends.
+--
+finalise :: Stream ()
+finalise = getStreamState >>= unsafeLiftIO . finalizeForeignPtr
 
 ----------------------
 -- The foreign imports
