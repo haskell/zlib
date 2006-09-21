@@ -53,13 +53,14 @@ module Codec.Compression.Zlib.Stream (
   consistencyCheck,
   dump,
   trace,
-  
+
   ) where
 
 import Foreign
 import Foreign.C
 import Data.ByteString.Base
 import System.IO.Unsafe (unsafeInterleaveIO)
+import System.IO (hPutStrLn, stderr)
 import Control.Monad (liftM)
 import Control.Exception (assert)
 
@@ -312,7 +313,7 @@ setOutAvail outLength = Z $ \_stream inBuf outBuf outOffset _ -> do
 --
 
 trace :: String -> Stream ()
-trace = unsafeLiftIO . putStrLn
+trace = unsafeLiftIO . hPutStrLn stderr
 
 dump :: Stream ()
 dump = do
@@ -324,7 +325,7 @@ dump = do
   outAvail <- getOutAvail
   outOffset <- getOutOffset
 
-  unsafeLiftIO $ putStrLn $
+  unsafeLiftIO $ hPutStrLn stderr $
     "Stream {\n" ++
     "  inNext    = " ++ show inNext    ++ ",\n" ++
     "  inAvail   = " ++ show inAvail   ++ ",\n" ++
