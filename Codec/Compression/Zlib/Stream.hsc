@@ -387,14 +387,14 @@ data Flush =
   | SyncFlush
   | FullFlush
   | Finish
-  | Block
+--  | Block -- only available in zlib 1.2 and later, uncomment if you need it.
 
 instance Enum Flush where
   fromEnum NoFlush   = #{const Z_NO_FLUSH}
   fromEnum SyncFlush = #{const Z_SYNC_FLUSH}
   fromEnum FullFlush = #{const Z_FULL_FLUSH}
   fromEnum Finish    = #{const Z_FINISH}
-  fromEnum Block     = #{const Z_BLOCK}
+--  fromEnum Block     = #{const Z_BLOCK}
 
 data Format =
     GZip       -- ^ Encode or decode with the gzip header format.
@@ -480,19 +480,23 @@ data CompressionStrategy =
                     --   'HuffmanOnly'. 
   | HuffmanOnly     -- ^ Use 'HuffmanOnly' to force Huffman encoding only (no
                     --   string match). 
+
+{-
+-- -- only available in zlib 1.2 and later, uncomment if you need it.
   | RLE             -- ^ Use 'RLE' to limit match distances to one (run-length
                     --   encoding). 'RLE' is designed to be almost as fast as
                     --   'HuffmanOnly', but give better compression for PNG
                     --   image data.
   | Fixed           -- ^ 'Fixed' prevents the use of dynamic Huffman codes,
                     --   allowing for a simpler decoder for special applications.
+-}
 
 instance Enum CompressionStrategy where
   fromEnum DefaultStrategy = #{const Z_DEFAULT_STRATEGY}
   fromEnum Filtered        = #{const Z_FILTERED}
   fromEnum HuffmanOnly     = #{const Z_HUFFMAN_ONLY}
-  fromEnum RLE             = #{const Z_RLE}
-  fromEnum Fixed           = #{const Z_FIXED}
+--  fromEnum RLE             = #{const Z_RLE}
+--  fromEnum Fixed           = #{const Z_FIXED}
 
 withStreamPtr :: (Ptr StreamState -> IO a) -> Stream a
 withStreamPtr f = do
