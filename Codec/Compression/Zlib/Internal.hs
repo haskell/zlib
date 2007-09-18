@@ -1,10 +1,10 @@
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (c) 2006 Duncan Coutts
+-- Copyright   :  (c) 2006-2007 Duncan Coutts
 -- License     :  BSD-style
 --
 -- Maintainer  :  duncan.coutts@worc.ox.ac.uk
--- Stability   :  experimental
+-- Stability   :  provisional
 -- Portability :  portable (H98 + FFI)
 --
 -- Pure stream based interface to lower level zlib wrapper

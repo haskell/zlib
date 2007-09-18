@@ -4,7 +4,7 @@
 -- License     :  BSD-style
 --
 -- Maintainer  :  duncan.coutts@worc.ox.ac.uk
--- Stability   :  experimental
+-- Stability   :  provisional
 -- Portability :  portable (H98 + FFI)
 --
 -- Compression and decompression of data streams in the gzip format.
@@ -37,10 +37,10 @@ module Codec.Compression.GZip (
   compress,
   compressWith,
   CompressionLevel(..),
-  
+
   -- * Decompression
   decompress
-  
+
   ) where
 
 import Data.ByteString.Lazy (ByteString)
