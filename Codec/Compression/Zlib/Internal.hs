@@ -32,8 +32,12 @@ import Prelude hiding (length)
 import Control.Monad (when)
 import Control.Exception (assert)
 import qualified Data.ByteString.Lazy as L
+#ifdef BYTESTRING_IN_BASE
+import qualified Data.ByteString.Base as S
+#else
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString.Internal as S
+#endif
 
 import qualified Codec.Compression.Zlib.Stream as Stream
 import Codec.Compression.Zlib.Stream (Stream)
@@ -69,18 +73,22 @@ compressFull
   -> Stream.CompressionStrategy
   -> L.ByteString
   -> L.ByteString
-compressFull format compLevel method bits memLevel strategy chunks =
-  Stream.run $ do
+compressFull format compLevel method bits memLevel strategy input =
+  L.fromChunks $ Stream.run $ do
     Stream.deflateInit format compLevel method bits memLevel strategy
-    case chunks of
-      L.Empty -> fillBuffers L.Empty
-      L.Chunk (S.PS inFPtr offset length) chunks' -> do
+    case L.toChunks input of
+      [] -> fillBuffers []
+      S.PS inFPtr offset length : chunks -> do
         Stream.pushInputBuffer inFPtr offset length
-        fillBuffers chunks'
+        fillBuffers chunks
 
   where
   outChunkSize :: Int
+#ifdef BYTESTRING_IN_BASE
+  outChunkSize = 16 * 1024 - 16
+#else
   outChunkSize = 16 * 1024 - L.chunkOverhead
+#endif
 
     -- we flick between two states:
     --   * where one or other buffer is empty
@@ -89,8 +97,8 @@ compressFull format compLevel method bits memLevel strategy chunks =
     --       - in which case we compress until a buffer is empty
 
   fillBuffers ::
-      L.ByteString
-   -> Stream L.ByteString
+      [S.ByteString]
+   -> Stream [S.ByteString]
   fillBuffers inChunks = do
     Stream.consistencyCheck
 
@@ -110,26 +118,26 @@ compressFull format compLevel method bits memLevel strategy chunks =
 
     if inputBufferEmpty
       then case inChunks of
-             L.Empty -> drainBuffers L.Empty
-             L.Chunk (S.PS inFPtr offset length) inChunks' -> do
+             [] -> drainBuffers []
+             S.PS inFPtr offset length : inChunks' -> do
                 Stream.pushInputBuffer inFPtr offset length
                 drainBuffers inChunks'
       else drainBuffers inChunks
 
 
   drainBuffers ::
-      L.ByteString
-   -> Stream L.ByteString
+      [S.ByteString]
+   -> Stream [S.ByteString]
   drainBuffers inChunks = do
 
     inputBufferEmpty' <- Stream.inputBufferEmpty
     outputBufferFull' <- Stream.outputBufferFull
     assert(not outputBufferFull'
-       && (L.null inChunks || not inputBufferEmpty')) $ return ()
+       && (null inChunks || not inputBufferEmpty')) $ return ()
     -- this invariant guarantees we can always make forward progress
     -- and that therefore a BufferError is impossible
 
-    let flush = if L.null inChunks then Stream.Finish else Stream.NoFlush
+    let flush = if null inChunks then Stream.Finish else Stream.NoFlush
     status <- Stream.deflate flush
 
     case status of
@@ -138,7 +146,7 @@ compressFull format compLevel method bits memLevel strategy chunks =
         if outputBufferFull
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   outChunks <- Stream.unsafeInterleave (fillBuffers inChunks)
-                  return (L.Chunk (S.PS outFPtr offset length) outChunks)
+                  return (S.PS outFPtr offset length : outChunks)
           else do fillBuffers inChunks
 
       Stream.StreamEnd -> do
@@ -148,9 +156,9 @@ compressFull format compLevel method bits memLevel strategy chunks =
         if outputBufferBytesAvailable > 0
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   Stream.finalise
-                  return (L.Chunk (S.PS outFPtr offset length) L.Empty)
+                  return [S.PS outFPtr offset length]
           else do Stream.finalise
-                  return L.Empty
+                  return []
       Stream.BufferError -> fail "BufferError should be impossible!"
       Stream.NeedDict    -> fail "NeedDict is impossible!"
 
@@ -161,18 +169,22 @@ decompressFull
   -> Stream.WindowBits
   -> L.ByteString
   -> L.ByteString
-decompressFull format bits chunks =
-  Stream.run $ do
+decompressFull format bits input =
+  L.fromChunks $ Stream.run $ do
     Stream.inflateInit format bits
-    case chunks of
-      L.Empty -> fillBuffers L.Empty
-      L.Chunk (S.PS inFPtr offset length) chunks' -> do
+    case L.toChunks input of
+      [] -> fillBuffers []
+      S.PS inFPtr offset length : chunks -> do
         Stream.pushInputBuffer inFPtr offset length
-        fillBuffers chunks'
+        fillBuffers chunks
 
   where
   outChunkSize :: Int
+#ifdef BYTESTRING_IN_BASE
+  outChunkSize = 32 * 1024 - 16
+#else
   outChunkSize = 32 * 1024 - L.chunkOverhead
+#endif
 
     -- we flick between two states:
     --   * where one or other buffer is empty
@@ -181,8 +193,8 @@ decompressFull format bits chunks =
     --       - in which case we compress until a buffer is empty
 
   fillBuffers ::
-      L.ByteString
-   -> Stream L.ByteString
+      [S.ByteString]
+   -> Stream [S.ByteString]
   fillBuffers inChunks = do
 
     -- in this state there are two possabilities:
@@ -201,22 +213,22 @@ decompressFull format bits chunks =
 
     if inputBufferEmpty
       then case inChunks of
-             L.Empty -> drainBuffers L.Empty
-             L.Chunk (S.PS inFPtr offset length) inChunks' -> do
+             [] -> drainBuffers []
+             S.PS inFPtr offset length : inChunks' -> do
                 Stream.pushInputBuffer inFPtr offset length
                 drainBuffers inChunks'
       else drainBuffers inChunks
 
 
   drainBuffers ::
-      L.ByteString
-   -> Stream L.ByteString
+      [S.ByteString]
+   -> Stream [S.ByteString]
   drainBuffers inChunks = do
 
     inputBufferEmpty' <- Stream.inputBufferEmpty
     outputBufferFull' <- Stream.outputBufferFull
     assert(not outputBufferFull'
-       && (L.null inChunks || not inputBufferEmpty')) $ return ()
+       && (null inChunks || not inputBufferEmpty')) $ return ()
     -- this invariant guarantees we can always make forward progress or at
     -- least if a BufferError does occur that it must be due to a premature EOF
 
@@ -228,7 +240,7 @@ decompressFull format bits chunks =
         if outputBufferFull
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   outChunks <- Stream.unsafeInterleave (fillBuffers inChunks)
-                  return (L.Chunk (S.PS outFPtr offset length) outChunks)
+                  return (S.PS outFPtr offset length : outChunks)
           else do fillBuffers inChunks
 
       Stream.StreamEnd -> do
@@ -239,8 +251,8 @@ decompressFull format bits chunks =
         if outputBufferBytesAvailable > 0
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   Stream.finalise
-                  return (L.Chunk (S.PS outFPtr offset length) L.Empty)
+                  return [S.PS outFPtr offset length]
           else do Stream.finalise
-                  return L.Empty
+                  return []
       Stream.BufferError -> fail "premature end of compressed stream"
       Stream.NeedDict    -> fail "compressed stream needs a custom dictionary"
