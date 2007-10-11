@@ -70,7 +70,7 @@ import Control.Exception (assert)
 
 import Prelude hiding (length)
 
-#include <zlib.h>
+#include "zlib.h"
 
 
 pushInputBuffer :: ForeignPtr Word8 -> Int -> Int -> Stream ()

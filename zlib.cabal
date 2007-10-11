@@ -1,7 +1,6 @@
 name:            zlib
 version:         0.4
 copyright:       (c) 2006-2007 Duncan Coutts
-build-depends:   base, bytestring >= 0.9
 license:         BSD3
 license-file:    LICENSE
 author:          Duncan Coutts <duncan@haskell.org>
@@ -11,7 +10,9 @@ stability:       provisional
 build-type:      Simple
 cabal-version:   >= 1.2
 
-flag bytestring_in_base
+flag bytestring-in-base
+  description: In the ghc-6.6 era the bytestring modules were
+               included in the base package.
 
 library
   exposed-modules: Codec.Compression.GZip,
@@ -20,12 +21,23 @@ library
                    Codec.Compression.Zlib.Internal
   other-modules:   Codec.Compression.Zlib.Stream
   extensions:      CPP, ForeignFunctionInterface
-  if flag(bytestring_in_base)
+  if flag(bytestring-in-base)
     -- bytestring was in base-2.0 and 2.1.1
     build-depends: base >= 2.0 && < 2.2
     ghc-options: -DBYTESTRING_IN_BASE
   else
     build-depends: base < 2.0 || >= 2.2, bytestring >= 0.9
   includes:        zlib.h
-  extra-libraries: z
-  ghc-options:     -fvia-C -Wall
+  ghc-options:     -fvia-C
+  if !os(windows)
+    -- Normally we use the the standard system zlib:
+    extra-libraries: z
+  else
+    -- However for the benefit of users of Windows (which does not have zlib
+    -- by default) we bundle a complete copy of the C sources of zlib-1.2.3
+    c-sources:     cbits/adler32.c cbits/compress.c cbits/crc32.c
+                   cbits/deflate.c cbits/gzio.c cbits/infback.c
+                   cbits/inffast.c cbits/inflate.c cbits/inftrees.c
+                   cbits/trees.c cbits/uncompr.c cbits/zutil.c
+    include-dirs:  cbits
+    install-includes: zlib.h
