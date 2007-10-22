@@ -9,6 +9,9 @@ synopsis:        Compression and decompression in the gzip and zlib formats
 stability:       provisional
 build-type:      Simple
 cabal-version:   >= 1.2.1
+extra-source-files: cbits/crc32.h cbits/inffast.h cbits/inflate.h
+                    cbits/trees.h cbits/deflate.h cbits/inffixed.h
+                    cbits/inftrees.h cbits/zconf.h cbits/zutil.h
 
 flag bytestring-in-base
   description: In the ghc-6.6 era the bytestring modules were
