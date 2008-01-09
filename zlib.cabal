@@ -11,7 +11,7 @@ build-type:      Simple
 cabal-version:   >= 1.2.1
 extra-source-files: cbits/crc32.h cbits/inffast.h cbits/inflate.h
                     cbits/trees.h cbits/deflate.h cbits/inffixed.h
-                    cbits/inftrees.h cbits/zconf.h cbits/zutil.h
+                    cbits/inftrees.h cbits/zutil.h
 
 flag bytestring-in-base
   description: In the ghc-6.6 era the bytestring modules were
@@ -43,4 +43,4 @@ library
                    cbits/inffast.c cbits/inflate.c cbits/inftrees.c
                    cbits/trees.c cbits/uncompr.c cbits/zutil.c
     include-dirs:  cbits
-    install-includes: zlib.h
+    install-includes: zlib.h zconf.h
