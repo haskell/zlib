@@ -5,7 +5,17 @@ license:         BSD3
 license-file:    LICENSE
 author:          Duncan Coutts <duncan@haskell.org>
 maintainer:      Duncan Coutts <duncan@haskell.org>
+category:        Codec
 synopsis:        Compression and decompression in the gzip and zlib formats
+description:     This package provides a pure interface for compressing and 
+                 decompressing streams of data represented as lazy 
+                 'ByteString's. It uses the zlib C library so it has high
+                 performance. It supports the \"zlib\", \"gzip\" and \"raw\"
+                 compression formats.
+                 .
+                 It provides a convenient high level api suitable for most
+                 tasks and for the few cases where more control is needed it
+                 provides access to the full zlib feature set.
 stability:       provisional
 build-type:      Simple
 cabal-version:   >= 1.2.1
@@ -27,7 +37,7 @@ library
   if flag(bytestring-in-base)
     -- bytestring was in base-2.0 and 2.1.1
     build-depends: base >= 2.0 && < 2.2
-    cpp-options:  -DBYTESTRING_IN_BASE
+    cpp-options: -DBYTESTRING_IN_BASE
   else
     build-depends: base < 2.0 || >= 2.2, bytestring >= 0.9
   includes:        zlib.h
