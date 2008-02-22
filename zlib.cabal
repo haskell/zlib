@@ -31,7 +31,7 @@ library
   else
     build-depends: base < 2.0 || >= 2.2, bytestring >= 0.9
   includes:        zlib.h
-  ghc-options:     -fvia-C
+  ghc-options:     -Wall
   if !os(windows)
     -- Normally we use the the standard system zlib:
     extra-libraries: z
