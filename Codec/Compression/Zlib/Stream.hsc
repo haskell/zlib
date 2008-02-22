@@ -251,6 +251,7 @@ failZ msg = Z (\_ _ _ _ _ -> fail ("Codec.Compression.Zlib: " ++ msg))
 run :: Stream a -> a
 run (Z m) = unsafePerformIO $ do
   ptr <- mallocBytes (#{const sizeof(z_stream)})
+  #{poke z_stream, msg}       ptr nullPtr
   #{poke z_stream, zalloc}    ptr nullPtr
   #{poke z_stream, zfree}     ptr nullPtr
   #{poke z_stream, opaque}    ptr nullPtr
@@ -375,16 +376,24 @@ instance Enum Status where
   toEnum (#{const Z_BUF_ERROR})  = BufferError
   toEnum other = error ("unexpected zlib status: " ++ show other)
 
-isFatalError :: CInt -> Bool
-isFatalError n | n >= 0             = False
-isFatalError (#{const Z_BUF_ERROR}) = False
-isFatalError _                      = True
+failIfError :: CInt -> Stream ()
+failIfError errno
+  | errno >= 0
+ || errno == #{const Z_BUF_ERROR} = return ()
+  | otherwise                     = fail =<< getErrorMessage errno
 
-throwError :: Stream a
-throwError = do
-  msg <- withStreamPtr (#{peek z_stream, msg})
-  msg' <- unsafeLiftIO (peekCString msg)
-  fail msg'
+getErrorMessage :: CInt -> Stream String
+getErrorMessage errno = do
+  msgPtr <- withStreamPtr (#{peek z_stream, msg})
+  if msgPtr /= nullPtr
+    then unsafeLiftIO (peekCString msgPtr)
+    else return $ case errno of
+      #{const Z_ERRNO}         -> "file error"
+      #{const Z_STREAM_ERROR}  -> "stream error"
+      #{const Z_DATA_ERROR}    -> "data error"
+      #{const Z_MEM_ERROR}     -> "insufficient memory"
+      #{const Z_VERSION_ERROR} -> "incompatible version"
+      _                        -> "unknown error"
 
 data Flush =
     NoFlush
@@ -539,10 +548,8 @@ inflateInit :: Format -> WindowBits -> Stream ()
 inflateInit format bits = do
   err <- withStreamPtr $ \ptr ->
     c_inflateInit2 ptr (fromIntegral (windowBits format bits))
-  if isFatalError err
-    then throwError
-    else do stream <- getStreamState
-            unsafeLiftIO $ addForeignPtrFinalizer c_inflateEnd stream
+  failIfError err
+  getStreamState >>= unsafeLiftIO . addForeignPtrFinalizer c_inflateEnd
 
 deflateInit :: Format
             -> CompressionLevel
@@ -559,24 +566,20 @@ deflateInit format compLevel method bits memLevel strategy = do
                   (fromIntegral (windowBits format bits))
                   (fromIntegral (fromEnum memLevel))
                   (fromIntegral (fromEnum strategy))
-  if isFatalError err
-    then throwError
-    else do stream <- getStreamState
-            unsafeLiftIO $ addForeignPtrFinalizer c_deflateEnd stream
+  failIfError err
+  getStreamState >>= unsafeLiftIO . addForeignPtrFinalizer c_deflateEnd
 
 inflate_ :: Flush -> Stream Status
 inflate_ flush = do
   err <- withStreamPtr (\ptr -> c_inflate ptr (fromIntegral (fromEnum flush)))
-  if isFatalError err
-    then throwError
-    else return (toEnum (fromIntegral err))
+  failIfError err
+  return (toEnum (fromIntegral err))
 
 deflate_ :: Flush -> Stream Status
 deflate_ flush = do
   err <- withStreamPtr (\ptr -> c_deflate ptr (fromIntegral (fromEnum flush)))
-  if isFatalError err
-    then throwError
-    else return (toEnum (fromIntegral err))
+  failIfError err
+  return (toEnum (fromIntegral err))
 
 -- | This never needs to be used as the stream's resources will be released
 -- automatically when no longer needed, however this can be used to release
