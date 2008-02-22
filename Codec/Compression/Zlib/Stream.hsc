@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-missing-methods #-}
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (c) 2006 Duncan Coutts
+-- Copyright   :  (c) 2006-2008 Duncan Coutts
 -- License     :  BSD-style
 --
 -- Maintainer  :  duncan.coutts@worc.ox.ac.uk
