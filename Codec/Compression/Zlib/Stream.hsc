@@ -516,6 +516,11 @@ withStreamPtr f = do
   stream <- getStreamState
   unsafeLiftIO (withForeignPtr stream f)
 
+withStreamState :: (StreamState -> IO a) -> Stream a
+withStreamState f = do
+  stream <- getStreamState
+  unsafeLiftIO (withForeignPtr stream (f . StreamState))
+
 setInAvail :: Int -> Stream ()
 setInAvail val = withStreamPtr $ \ptr ->
   #{poke z_stream, avail_in} ptr (fromIntegral val :: CUInt)
@@ -546,8 +551,8 @@ getOutNext = withStreamPtr (#{peek z_stream, next_out})
 
 inflateInit :: Format -> WindowBits -> Stream ()
 inflateInit format bits = do
-  err <- withStreamPtr $ \ptr ->
-    c_inflateInit2 ptr (fromIntegral (windowBits format bits))
+  err <- withStreamState $ \zstream ->
+    c_inflateInit2 zstream (fromIntegral (windowBits format bits))
   failIfError err
   getStreamState >>= unsafeLiftIO . addForeignPtrFinalizer c_inflateEnd
 
@@ -559,8 +564,8 @@ deflateInit :: Format
             -> CompressionStrategy
             -> Stream ()
 deflateInit format compLevel method bits memLevel strategy = do
-  err <- withStreamPtr $ \ptr ->
-    c_deflateInit2 ptr
+  err <- withStreamState $ \zstream ->
+    c_deflateInit2 zstream
                   (fromIntegral (fromEnum compLevel))
                   (fromIntegral (fromEnum method))
                   (fromIntegral (windowBits format bits))
@@ -571,13 +576,15 @@ deflateInit format compLevel method bits memLevel strategy = do
 
 inflate_ :: Flush -> Stream Status
 inflate_ flush = do
-  err <- withStreamPtr (\ptr -> c_inflate ptr (fromIntegral (fromEnum flush)))
+  err <- withStreamState $ \zstream ->
+    c_inflate zstream (fromIntegral (fromEnum flush))
   failIfError err
   return (toEnum (fromIntegral err))
 
 deflate_ :: Flush -> Stream Status
 deflate_ flush = do
-  err <- withStreamPtr (\ptr -> c_deflate ptr (fromIntegral (fromEnum flush)))
+  err <- withStreamState $ \zstream ->
+    c_deflate zstream (fromIntegral (fromEnum flush))
   failIfError err
   return (toEnum (fromIntegral err))
 
@@ -592,24 +599,24 @@ finalise = getStreamState >>= unsafeLiftIO . finalizeForeignPtr
 ----------------------
 -- The foreign imports
 
-data StreamState = StreamState ()
+newtype StreamState = StreamState (Ptr StreamState)
 
 foreign import ccall unsafe "zlib.h inflateInit2"
-  c_inflateInit2 :: Ptr StreamState -> CInt -> IO CInt
+  c_inflateInit2 :: StreamState -> CInt -> IO CInt
 
 foreign import ccall unsafe "zlib.h inflate"
-  c_inflate :: Ptr StreamState -> CInt -> IO CInt
+  c_inflate :: StreamState -> CInt -> IO CInt
 
 foreign import ccall unsafe "zlib.h &inflateEnd"
   c_inflateEnd :: FinalizerPtr StreamState
 
 
 foreign import ccall unsafe "zlib.h deflateInit2"
-  c_deflateInit2 :: Ptr StreamState
+  c_deflateInit2 :: StreamState
                  -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
 
 foreign import ccall unsafe "zlib.h deflate"
-  c_deflate :: Ptr StreamState -> CInt -> IO CInt
+  c_deflate :: StreamState -> CInt -> IO CInt
 
 foreign import ccall unsafe "zlib.h &deflateEnd"
   c_deflateEnd :: FinalizerPtr StreamState
