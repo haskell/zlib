@@ -602,8 +602,27 @@ finalise = getStreamState >>= unsafeLiftIO . finalizeForeignPtr
 
 newtype StreamState = StreamState (Ptr StreamState)
 
-foreign import ccall unsafe "zlib.h inflateInit2"
-  c_inflateInit2 :: StreamState -> CInt -> IO CInt
+-- inflateInit2 and deflateInit2 are actually defined as macros in zlib.h
+-- They are defined in terms of inflateInit2_ and deflateInit2_ passing two
+-- additional arguments used to detect compatability problems. They pass the
+-- version of zlib as a char * and the size of the z_stream struct.
+-- If we compile via C then we can avoid this hassle however thats not really
+-- kosher since the Haskell FFI is defined at the C ABI level, not the C
+-- language level. There is no requirement to compile via C and pick up C
+-- headers. So it's much better if we can make it work properly and that'd
+-- also allow compiling via ghc's ncg which is a good thing since the C
+-- backend is not going to be around forever.
+--
+-- So we define c_inflateInit2 and c_deflateInit2 here as wrappers around
+-- their _ counterparts and pass the extra args.
+
+foreign import ccall unsafe "zlib.h inflateInit2_"
+  c_inflateInit2_ :: StreamState -> CInt -> Ptr CChar -> CInt -> IO CInt
+
+c_inflateInit2 :: StreamState -> CInt -> IO CInt
+c_inflateInit2 z n =
+  withCString #{const_str ZLIB_VERSION} $ \versionStr ->
+    c_inflateInit2_ z n versionStr (#{const sizeof(z_stream)} :: CInt)
 
 foreign import ccall unsafe "zlib.h inflate"
   c_inflate :: StreamState -> CInt -> IO CInt
@@ -612,9 +631,17 @@ foreign import ccall unsafe "zlib.h &inflateEnd"
   c_inflateEnd :: FinalizerPtr StreamState
 
 
-foreign import ccall unsafe "zlib.h deflateInit2"
-  c_deflateInit2 :: StreamState
-                 -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
+foreign import ccall unsafe "zlib.h deflateInit2_"
+  c_deflateInit2_ :: StreamState
+                  -> CInt -> CInt -> CInt -> CInt -> CInt
+		  -> Ptr CChar -> CInt
+		  -> IO CInt
+
+c_deflateInit2 :: StreamState
+               -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
+c_deflateInit2 z a b c d e =
+  withCString #{const_str ZLIB_VERSION} $ \versionStr ->
+    c_deflateInit2_ z a b c d e versionStr (#{const sizeof(z_stream)} :: CInt)
 
 foreign import ccall unsafe "zlib.h deflate"
   c_deflate :: StreamState -> CInt -> IO CInt
