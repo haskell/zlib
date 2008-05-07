@@ -387,7 +387,7 @@ getErrorMessage :: CInt -> Stream String
 getErrorMessage errno = do
   msgPtr <- withStreamPtr (#{peek z_stream, msg})
   if msgPtr /= nullPtr
-    then unsafeLiftIO (peekCString msgPtr)
+    then unsafeLiftIO (peekCAString msgPtr)
     else return $ case errno of
       #{const Z_ERRNO}         -> "file error"
       #{const Z_STREAM_ERROR}  -> "stream error"
@@ -636,7 +636,7 @@ foreign import ccall unsafe "zlib.h inflateInit2_"
 
 c_inflateInit2 :: StreamState -> CInt -> IO CInt
 c_inflateInit2 z n =
-  withCString #{const_str ZLIB_VERSION} $ \versionStr ->
+  withCAString #{const_str ZLIB_VERSION} $ \versionStr ->
     c_inflateInit2_ z n versionStr (#{const sizeof(z_stream)} :: CInt)
 
 foreign import ccall unsafe "zlib.h inflate"
@@ -655,7 +655,7 @@ foreign import ccall unsafe "zlib.h deflateInit2_"
 c_deflateInit2 :: StreamState
                -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
 c_deflateInit2 z a b c d e =
-  withCString #{const_str ZLIB_VERSION} $ \versionStr ->
+  withCAString #{const_str ZLIB_VERSION} $ \versionStr ->
     c_deflateInit2_ z a b c d e versionStr (#{const sizeof(z_stream)} :: CInt)
 
 foreign import ccall unsafe "zlib.h deflate"
