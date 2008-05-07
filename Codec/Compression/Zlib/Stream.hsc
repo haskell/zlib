@@ -416,6 +416,7 @@ data Format =
   | Raw        -- ^ Encode or decode a raw data stream without any header.
   | GZipOrZlib -- ^ Enable zlib or gzip decoding with automatic header
                --   detection. This only makes sense for decompression.
+  deriving Eq
 
 -- | The compression method
 data Method = Deflated -- ^ \'Deflate\' is the only one supported in this
@@ -552,6 +553,7 @@ getOutNext = withStreamPtr (#{peek z_stream, next_out})
 
 inflateInit :: Format -> WindowBits -> Stream ()
 inflateInit format bits = do
+  checkFormatSupported format
   err <- withStreamState $ \zstream ->
     c_inflateInit2 zstream (fromIntegral (windowBits format bits))
   failIfError err
@@ -565,6 +567,7 @@ deflateInit :: Format
             -> CompressionStrategy
             -> Stream ()
 deflateInit format compLevel method bits memLevel strategy = do
+  checkFormatSupported format
   err <- withStreamState $ \zstream ->
     c_deflateInit2 zstream
                   (fromIntegral (fromEnum compLevel))
@@ -596,6 +599,18 @@ deflate_ flush = do
 --
 finalise :: Stream ()
 finalise = getStreamState >>= unsafeLiftIO . finalizeForeignPtr
+
+checkFormatSupported :: Format -> Stream ()
+checkFormatSupported format = do
+  version <- unsafeLiftIO (peekCAString =<< c_zlibVersion)
+  case version of
+    ('1':'.':'1':'.':_)
+       | format == GZip
+      || format == GZipOrZlib
+      -> fail $ "version 1.1.x of the zlib C library does not support the"
+             ++ " 'gzip' format via the in-memory api, only the 'raw' and "
+	     ++ " 'zlib' formats."
+    _ -> return ()
 
 ----------------------
 -- The foreign imports
@@ -648,3 +663,6 @@ foreign import ccall unsafe "zlib.h deflate"
 
 foreign import ccall unsafe "zlib.h &deflateEnd"
   c_deflateEnd :: FinalizerPtr StreamState
+
+foreign import ccall unsafe "zlib.h zlibVersion"
+  c_zlibVersion :: IO CString
