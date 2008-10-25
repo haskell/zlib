@@ -472,7 +472,7 @@ data MemoryLevel =
                        --   compression ratio. (Equivalent to @'MemoryLevel' 1@)
   | MaxMemoryLevel     -- ^ Use maximum memory for optimal compression speed.
                        --   (Equivalent to @'MemoryLevel' 9@)
-  | MemoryLevel Int    -- ^ Use a specific level in the range 1..9
+  | MemoryLevel Int    -- ^ Use a specific level in the range @1..9@
 
 instance Enum MemoryLevel where
   fromEnum DefaultMemoryLevel = 8
