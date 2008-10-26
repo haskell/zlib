@@ -12,12 +12,12 @@
 -----------------------------------------------------------------------------
 module Codec.Compression.Zlib.Internal (
 
-  -- * Compression with the full set of parameters
+  -- * Compression and decompression
   compress,
   CompressParams(..),
   defaultCompressParams,
 
-  -- * Decompression with the full set of parameters
+  -- * Decompression
   decompress,
   DecompressParams(..),
   defaultDecompressParams,
@@ -29,7 +29,6 @@ module Codec.Compression.Zlib.Internal (
   Stream.WindowBits(..),
   Stream.MemoryLevel(..),
   Stream.CompressionStrategy(..),
-
   ) where
 
 import Prelude hiding (length)
@@ -54,14 +53,16 @@ data CompressParams = CompressParams {
   compressMethod      :: Stream.Method,
   compressWindowBits  :: Stream.WindowBits,
   compressMemoryLevel :: Stream.MemoryLevel,
-  compressStrategy    :: Stream.CompressionStrategy
+  compressStrategy    :: Stream.CompressionStrategy,
+  compressBufferSize  :: Int
 }
 
 -- | The full set of parameters for decompression. The defaults are
 -- 'defaultCompressParams'.
 --
 data DecompressParams = DecompressParams {
-  decompressWindowBits :: Stream.WindowBits
+  decompressWindowBits :: Stream.WindowBits,
+  decompressBufferSize :: Int
 }
 
 defaultCompressParams :: CompressParams
@@ -70,13 +71,27 @@ defaultCompressParams = CompressParams {
   compressMethod      = Stream.Deflated,
   compressWindowBits  = Stream.DefaultWindowBits,
   compressMemoryLevel = Stream.DefaultMemoryLevel,
-  compressStrategy    = Stream.DefaultStrategy
+  compressStrategy    = Stream.DefaultStrategy,
+  compressBufferSize  = defaultCompressBufferSize
 }
 
 defaultDecompressParams :: DecompressParams
 defaultDecompressParams = DecompressParams {
-  decompressWindowBits = Stream.DefaultWindowBits
+  decompressWindowBits = Stream.DefaultWindowBits,
+  decompressBufferSize = defaultDecompressBufferSize
 }
+
+-- | The default chunk sizes for the output of compression and decompression
+-- are 16k and 32k respectively (less a small accounting overhead).
+--
+defaultCompressBufferSize, defaultDecompressBufferSize :: Int
+#ifdef BYTESTRING_IN_BASE
+defaultCompressBufferSize   = 16 * 1024 - 16
+defaultDecompressBufferSize = 32 * 1024 - 16
+#else
+defaultCompressBufferSize   = 16 * 1024 - L.chunkOverhead
+defaultDecompressBufferSize = 32 * 1024 - L.chunkOverhead
+#endif
 
 {-# NOINLINE compress #-}
 compress
@@ -85,34 +100,27 @@ compress
   -> L.ByteString
   -> L.ByteString
 compress format
-  (CompressParams compLevel method bits memLevel strategy)
+  (CompressParams compLevel method bits memLevel strategy initChunkSize)
   input =
   L.fromChunks $ Stream.run $ do
     Stream.deflateInit format compLevel method bits memLevel strategy
     case L.toChunks input of
-      [] -> fillBuffers []
+      [] -> fillBuffers 20 [] --gzip header is 20 bytes, others even smaller
       S.PS inFPtr offset length : chunks -> do
         Stream.pushInputBuffer inFPtr offset length
-        fillBuffers chunks
+        fillBuffers initChunkSize chunks
 
   where
-  outChunkSize :: Int
-#ifdef BYTESTRING_IN_BASE
-  outChunkSize = 16 * 1024 - 16
-#else
-  outChunkSize = 16 * 1024 - L.chunkOverhead
-#endif
-
     -- we flick between two states:
     --   * where one or other buffer is empty
     --       - in which case we refill one or both
     --   * where both buffers are non-empty
     --       - in which case we compress until a buffer is empty
 
-  fillBuffers ::
-      [S.ByteString]
-   -> Stream [S.ByteString]
-  fillBuffers inChunks = do
+  fillBuffers :: Int
+              -> [S.ByteString]
+              -> Stream [S.ByteString]
+  fillBuffers outChunkSize inChunks = do
     Stream.consistencyCheck
 
     -- in this state there are two possabilities:
@@ -158,9 +166,10 @@ compress format
         outputBufferFull <- Stream.outputBufferFull
         if outputBufferFull
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
-                  outChunks <- Stream.unsafeInterleave (fillBuffers inChunks)
+                  outChunks <- Stream.unsafeInterleave
+                    (fillBuffers defaultCompressBufferSize inChunks)
                   return (S.PS outFPtr offset length : outChunks)
-          else do fillBuffers inChunks
+          else do fillBuffers defaultCompressBufferSize inChunks
 
       Stream.StreamEnd -> do
         inputBufferEmpty <- Stream.inputBufferEmpty
@@ -182,33 +191,26 @@ decompress
   -> DecompressParams
   -> L.ByteString
   -> L.ByteString
-decompress format (DecompressParams bits) input =
+decompress format (DecompressParams bits initChunkSize) input =
   L.fromChunks $ Stream.run $ do
     Stream.inflateInit format bits
     case L.toChunks input of
-      [] -> fillBuffers []
+      [] -> fillBuffers 4 [] --always an error anyway
       S.PS inFPtr offset length : chunks -> do
         Stream.pushInputBuffer inFPtr offset length
-        fillBuffers chunks
+        fillBuffers initChunkSize chunks
 
   where
-  outChunkSize :: Int
-#ifdef BYTESTRING_IN_BASE
-  outChunkSize = 32 * 1024 - 16
-#else
-  outChunkSize = 32 * 1024 - L.chunkOverhead
-#endif
-
     -- we flick between two states:
     --   * where one or other buffer is empty
     --       - in which case we refill one or both
     --   * where both buffers are non-empty
     --       - in which case we compress until a buffer is empty
 
-  fillBuffers ::
-      [S.ByteString]
-   -> Stream [S.ByteString]
-  fillBuffers inChunks = do
+  fillBuffers :: Int
+              -> [S.ByteString]
+              -> Stream [S.ByteString]
+  fillBuffers outChunkSize inChunks = do
 
     -- in this state there are two possabilities:
     --   * no outbut buffer space is available
@@ -252,9 +254,10 @@ decompress format (DecompressParams bits) input =
         outputBufferFull <- Stream.outputBufferFull
         if outputBufferFull
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
-                  outChunks <- Stream.unsafeInterleave (fillBuffers inChunks)
+                  outChunks <- Stream.unsafeInterleave
+                    (fillBuffers defaultDecompressBufferSize inChunks)
                   return (S.PS outFPtr offset length : outChunks)
-          else do fillBuffers inChunks
+          else do fillBuffers defaultDecompressBufferSize inChunks
 
       Stream.StreamEnd -> do
         -- Note that there may be input bytes still available if the stream
