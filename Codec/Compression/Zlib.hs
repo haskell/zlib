@@ -25,8 +25,8 @@ module Codec.Compression.Zlib (
   compressWith,
   decompressWith,
 
-  CompressParams(..),
-  DecompressParams(..),
+  CompressParams(..), defaultCompressParams,
+  DecompressParams(..), defaultDecompressParams,
 
   -- ** The compression parameter types
   Format(..),
