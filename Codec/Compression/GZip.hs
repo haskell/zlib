@@ -45,7 +45,8 @@ module Codec.Compression.GZip (
 
 import Data.ByteString.Lazy (ByteString)
 
-import Codec.Compression.Zlib.Internal as Internal
+import qualified Codec.Compression.Zlib.Internal as Internal
+import Codec.Compression.Zlib.Internal hiding (compress, decompress)
 
 
 -- | Decompress a stream of data in the gzip format.
@@ -66,7 +67,7 @@ import Codec.Compression.Zlib.Internal as Internal
 -- stream before doing any IO action that depends on it.
 --
 decompress :: ByteString -> ByteString
-decompress = Internal.decompressDefault GZip
+decompress = Internal.decompress GZip defaultDecompressParams
 
 
 -- | Compress a stream of data into the gzip format.
@@ -76,7 +77,7 @@ decompress = Internal.decompressDefault GZip
 -- level.
 --
 compress :: ByteString -> ByteString
-compress = Internal.compressDefault GZip DefaultCompression
+compress = Internal.compress GZip defaultCompressParams
 
 
 -- | Like 'compress' but with an extra parameter to specify the compression
@@ -85,5 +86,8 @@ compress = Internal.compressDefault GZip DefaultCompression
 -- There are a number of additional compression parameters which are rarely
 -- necessary to change but if you need to you can do so using 'compressFull'.
 --
-compressWith ::CompressionLevel -> ByteString -> ByteString
-compressWith = Internal.compressDefault GZip
+compressWith :: CompressionLevel -> ByteString -> ByteString
+compressWith level = Internal.compress GZip defaultCompressParams {
+                       compressLevel = level
+                     }
+

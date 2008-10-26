@@ -29,13 +29,16 @@ module Codec.Compression.Zlib.Raw (
 
 import Data.ByteString.Lazy (ByteString)
 
-import Codec.Compression.Zlib.Internal as Internal
+import qualified Codec.Compression.Zlib.Internal as Internal
+import Codec.Compression.Zlib.Internal hiding (compress, decompress)
 
 decompress :: ByteString -> ByteString
-decompress = Internal.decompressDefault Raw
+decompress = Internal.decompress Raw defaultDecompressParams
 
 compress :: ByteString -> ByteString
-compress = Internal.compressDefault Raw DefaultCompression
+compress = Internal.compress Raw defaultCompressParams
 
-compressWith ::CompressionLevel -> ByteString -> ByteString
-compressWith = Internal.compressDefault Raw
+compressWith :: CompressionLevel -> ByteString -> ByteString
+compressWith level = Internal.compress Raw defaultCompressParams {
+                       compressLevel = level
+                     }

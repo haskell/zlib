@@ -12,15 +12,19 @@
 -----------------------------------------------------------------------------
 module Codec.Compression.Zlib.Internal (
 
-  -- * Compression and decompression
-  compressDefault,
-  decompressDefault,
+  -- * Compression with the full set of parameters
+  compress,
+  CompressParams(..),
+  defaultCompressParams,
+
+  -- * Decompression with the full set of parameters
+  decompress,
+  DecompressParams(..),
+  defaultDecompressParams,
+
+  -- * The compression parameter types
   Stream.Format(..),
   Stream.CompressionLevel(..),
-
-  -- * The same but with the full set of parameters
-  compressFull,
-  decompressFull,
   Stream.Method(..),
   Stream.WindowBits(..),
   Stream.MemoryLevel(..),
@@ -42,38 +46,47 @@ import qualified Data.ByteString.Internal as S
 import qualified Codec.Compression.Zlib.Stream as Stream
 import Codec.Compression.Zlib.Stream (Stream)
 
-compressDefault
-  :: Stream.Format
-  -> Stream.CompressionLevel
-  -> L.ByteString
-  -> L.ByteString
-compressDefault format compressionLevel =
-  compressFull format
-               compressionLevel
-               Stream.Deflated
-               Stream.DefaultWindowBits
-               Stream.DefaultMemoryLevel
-               Stream.DefaultStrategy
+-- | The full set of parameters for compression. The defaults are
+-- 'defaultCompressParams'.
+--
+data CompressParams = CompressParams {
+  compressLevel       :: Stream.CompressionLevel,
+  compressMethod      :: Stream.Method,
+  compressWindowBits  :: Stream.WindowBits,
+  compressMemoryLevel :: Stream.MemoryLevel,
+  compressStrategy    :: Stream.CompressionStrategy
+}
 
-decompressDefault
-  :: Stream.Format
-  -> L.ByteString
-  -> L.ByteString
-decompressDefault format =
-  decompressFull format
-                 Stream.DefaultWindowBits
+-- | The full set of parameters for decompression. The defaults are
+-- 'defaultCompressParams'.
+--
+data DecompressParams = DecompressParams {
+  decompressWindowBits :: Stream.WindowBits
+}
 
-{-# NOINLINE compressFull #-}
-compressFull
+defaultCompressParams :: CompressParams
+defaultCompressParams = CompressParams {
+  compressLevel       = Stream.DefaultCompression,
+  compressMethod      = Stream.Deflated,
+  compressWindowBits  = Stream.DefaultWindowBits,
+  compressMemoryLevel = Stream.DefaultMemoryLevel,
+  compressStrategy    = Stream.DefaultStrategy
+}
+
+defaultDecompressParams :: DecompressParams
+defaultDecompressParams = DecompressParams {
+  decompressWindowBits = Stream.DefaultWindowBits
+}
+
+{-# NOINLINE compress #-}
+compress
   :: Stream.Format
-  -> Stream.CompressionLevel
-  -> Stream.Method
-  -> Stream.WindowBits
-  -> Stream.MemoryLevel
-  -> Stream.CompressionStrategy
+  -> CompressParams
   -> L.ByteString
   -> L.ByteString
-compressFull format compLevel method bits memLevel strategy input =
+compress format
+  (CompressParams compLevel method bits memLevel strategy)
+  input =
   L.fromChunks $ Stream.run $ do
     Stream.deflateInit format compLevel method bits memLevel strategy
     case L.toChunks input of
@@ -163,13 +176,13 @@ compressFull format compLevel method bits memLevel strategy input =
       Stream.NeedDict    -> fail "NeedDict is impossible!"
 
 
-{-# NOINLINE decompressFull #-}
-decompressFull
+{-# NOINLINE decompress #-}
+decompress
   :: Stream.Format
-  -> Stream.WindowBits
+  -> DecompressParams
   -> L.ByteString
   -> L.ByteString
-decompressFull format bits input =
+decompress format (DecompressParams bits) input =
   L.fromChunks $ Stream.run $ do
     Stream.inflateInit format bits
     case L.toChunks input of
