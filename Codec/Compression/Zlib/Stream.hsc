@@ -4,8 +4,8 @@
 -- Copyright   :  (c) 2006-2008 Duncan Coutts
 -- License     :  BSD-style
 --
--- Maintainer  :  duncan.coutts@worc.ox.ac.uk
--- Stability   :  experimental
+-- Maintainer  :  duncan@haskell.org
+-- Stability   :  provisional
 -- Portability :  portable (H98 + FFI)
 --
 -- Zlib wrapper layer

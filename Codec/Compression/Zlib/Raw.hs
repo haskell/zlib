@@ -1,10 +1,10 @@
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (c) 2006 Duncan Coutts
+-- Copyright   :  (c) 2006-2008 Duncan Coutts
 -- License     :  BSD-style
 --
--- Maintainer  :  duncan.coutts@worc.ox.ac.uk
--- Stability   :  experimental
+-- Maintainer  :  duncan@haskell.org
+-- Stability   :  provisional
 -- Portability :  portable (H98 + FFI)
 --
 -- Compression and decompression of data streams in the raw deflate format.

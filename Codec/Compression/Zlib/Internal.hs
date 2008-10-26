@@ -1,9 +1,9 @@
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (c) 2006-2007 Duncan Coutts
+-- Copyright   :  (c) 2006-2008 Duncan Coutts
 -- License     :  BSD-style
 --
--- Maintainer  :  duncan.coutts@worc.ox.ac.uk
+-- Maintainer  :  duncan@haskell.org
 -- Stability   :  provisional
 -- Portability :  portable (H98 + FFI)
 --
