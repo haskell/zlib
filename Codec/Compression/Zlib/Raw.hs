@@ -17,14 +17,25 @@
 -----------------------------------------------------------------------------
 module Codec.Compression.Zlib.Raw (
   
-  -- * Compression
+  -- * Simple compression and decompression
   compress,
+  decompress,
+
+  -- * Extended api with control over compression parameters
   compressWith,
+  decompressWith,
+
+  CompressParams(..),
+  DecompressParams(..),
+
+  -- ** The compression parameter types
+  Format(..),
   CompressionLevel(..),
-  
-  -- * Decompression
-  decompress
-  
+  Method(..),
+  WindowBits(..),
+  MemoryLevel(..),
+  CompressionStrategy(..),
+
   ) where
 
 import Data.ByteString.Lazy (ByteString)
@@ -35,10 +46,11 @@ import Codec.Compression.Zlib.Internal hiding (compress, decompress)
 decompress :: ByteString -> ByteString
 decompress = Internal.decompress Raw defaultDecompressParams
 
+decompressWith :: DecompressParams -> ByteString -> ByteString
+decompressWith = Internal.decompress Raw
+
 compress :: ByteString -> ByteString
 compress = Internal.compress Raw defaultCompressParams
 
-compressWith :: CompressionLevel -> ByteString -> ByteString
-compressWith level = Internal.compress Raw defaultCompressParams {
-                       compressLevel = level
-                     }
+compressWith :: CompressParams -> ByteString -> ByteString
+compressWith = Internal.compress Raw

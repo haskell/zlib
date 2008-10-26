@@ -33,13 +33,24 @@ module Codec.Compression.GZip (
   -- > content <- fmap GZip.decompress (readFile file)
   --
 
-  -- * Compression
+  -- * Simple compression and decompression
   compress,
-  compressWith,
-  CompressionLevel(..),
+  decompress,
 
-  -- * Decompression
-  decompress
+  -- * Extended api with control over compression parameters
+  compressWith,
+  decompressWith,
+
+  CompressParams(..),
+  DecompressParams(..),
+
+  -- ** The compression parameter types
+  Format(..),
+  CompressionLevel(..),
+  Method(..),
+  WindowBits(..),
+  MemoryLevel(..),
+  CompressionStrategy(..),
 
   ) where
 
@@ -70,6 +81,13 @@ decompress :: ByteString -> ByteString
 decompress = Internal.decompress GZip defaultDecompressParams
 
 
+-- | Like 'decompress' but with the ability to specify various decompression
+-- parameters.
+--
+decompressWith :: DecompressParams -> ByteString -> ByteString
+decompressWith = Internal.decompress GZip
+
+
 -- | Compress a stream of data into the gzip format.
 --
 -- This uses the default compression level which favours a higher compression
@@ -80,14 +98,10 @@ compress :: ByteString -> ByteString
 compress = Internal.compress GZip defaultCompressParams
 
 
--- | Like 'compress' but with an extra parameter to specify the compression
--- level.
+-- | Like 'compress' but with the ability to specify various compression
+-- parameters. In particular you can set the compression level:
 --
--- There are a number of additional compression parameters which are rarely
--- necessary to change but if you need to you can do so using 'compressFull'.
+-- > compressWith defaultCompressParams { compressLevel = BestCompression }
 --
-compressWith :: CompressionLevel -> ByteString -> ByteString
-compressWith level = Internal.compress GZip defaultCompressParams {
-                       compressLevel = level
-                     }
-
+compressWith :: CompressParams -> ByteString -> ByteString
+compressWith = Internal.compress GZip
