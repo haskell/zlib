@@ -18,8 +18,8 @@
 module Codec.Compression.GZip (
 
   -- | This module provides pure functions for compressing and decompressing
-  -- streams of data represented by lazy 'ByteString's. This makes it easy to
-  -- use either in memory or with disk or network IO.
+  -- streams of data in the gzip format and represented by lazy 'ByteString's.
+  -- This makes it easy to use either in memory or with disk or network IO.
   --
   -- For example a simple gzip compression program is just:
   --
@@ -73,8 +73,8 @@ decompress = Internal.decompress GZip defaultDecompressParams
 -- | Compress a stream of data into the gzip format.
 --
 -- This uses the default compression level which favours a higher compression
--- ratio over compression speed. Use 'compressWith' to adjust the compression
--- level.
+-- ratio over compression speed, though it does not use the maximum compression
+-- level. Use 'compressWith' to adjust the compression level.
 --
 compress :: ByteString -> ByteString
 compress = Internal.compress GZip defaultCompressParams
