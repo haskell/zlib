@@ -17,6 +17,10 @@
 -----------------------------------------------------------------------------
 module Codec.Compression.Zlib (
 
+  -- | This module provides pure functions for compressing and decompressing
+  -- streams of data in the zlib format and represented by lazy 'ByteString's.
+  -- This makes it easy to use either in memory or with disk or network IO.
+
   -- * Simple compression and decompression
   compress,
   decompress,
