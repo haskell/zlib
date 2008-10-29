@@ -415,26 +415,48 @@ instance Enum Flush where
   fromEnum Finish    = #{const Z_FINISH}
 --  fromEnum Block     = #{const Z_BLOCK}
 
+-- | The format used for compression or decompression. There are three
+-- variations.
+--
 data Format =
-    GZip       -- ^ Encode or decode with the gzip header format.
-  | Zlib       -- ^ Encode or decode with the zlib header format.
-  | Raw        -- ^ Encode or decode a raw data stream without any header.
-  | GZipOrZlib -- ^ Enable zlib or gzip decoding with automatic header
-               --   detection. This only makes sense for decompression.
+    GZip -- ^ The gzip format uses a header with a checksum and some optional
+         -- meta-data about the compressed file. It is intended primarily for
+         -- compressing individual files but is also sometimes used for network
+         -- protocols such as HTTP. The format is described in detail in RFC
+         -- #1952 <http://www.ietf.org/rfc/rfc1952.txt>
+
+  | Zlib -- | The zlib format uses a minimal header with a checksum but no
+         -- other meta-data. It is especially designed for use in network
+         -- protocols. The format is described in detail in RFC #1950
+         -- <http://www.ietf.org/rfc/rfc1950.txt>
+
+  | Raw  -- | The \'raw\' format is just the compressed data stream without any
+         -- additional header, meta-data or data-integrity checksum. The format
+         -- is described in detail in RFC #1951
+         -- <http://www.ietf.org/rfc/rfc1951.txt>
+
+  | GZipOrZlib -- ^ This is not a format as such. It enabled zlib or gzip
+               -- decoding with automatic header detection. This only makes
+               -- sense for decompression.
   deriving Eq
 
 -- | The compression method
-data Method = Deflated -- ^ \'Deflate\' is the only one supported in this
-                       -- version of zlib.
+--
+data Method = Deflated -- ^ \'Deflate\' is the only method supported in this
+                       -- version of zlib. Indeed it is likely to be the only
+                       -- method that ever will be supported.
 
 instance Enum Method where
   fromEnum Deflated = #{const Z_DEFLATED}
 
--- | Control amount of compression. This is a trade-off between the amount
--- of compression and the time and memory required to do the compression.
+-- | The compression level parameter controls the amount of compression. This
+-- is a trade-off between the amount of compression and the time required to do
+-- the compression.
+--
 data CompressionLevel = 
     DefaultCompression   -- ^ The default compression level is 6 (that is, 
-                         --   biased towards high compression at expense of speed).
+                         --   biased towards higher compression at expense of
+			 -- speed).
   | NoCompression        -- ^ No compression, just a block copy.
   | BestSpeed            -- ^ The fastest compression method (less compression) 
   | BestCompression      -- ^ The slowest compression method (best compression).
@@ -449,6 +471,18 @@ instance Enum CompressionLevel where
            | n >= 1 && n <= 9 = n
            | otherwise        = error "CompressLevel must be in the range 1..9"
 
+-- | This specifies the size of the compression window. Larger values of this
+-- parameter result in better compression at the expense of higher memory
+-- usage.
+--
+-- The compression window size is the value of the the window bits raised to
+-- the power 2. The window bits must be in the range @8..15@ which corresponds
+-- to compression window sizes of 256b to 32Kb. The default is 15 which is also
+-- the maximum size.
+--
+-- The total amount of memory used depends on the window bits and the
+-- 'MemoryLevel'. See the 'MemoryLevel' for the details.
+--
 data WindowBits = DefaultWindowBits
                 | WindowBits Int
 
@@ -464,7 +498,25 @@ windowBits format bits = (formatModifier format) (checkWindowBits bits)
         formatModifier Raw        = negate
 
 -- | The 'MemoryLevel' parameter specifies how much memory should be allocated
--- for the internal compression state.
+-- for the internal compression state. It is a tradoff between memory usage,
+-- compression ratio and compression speed. Using more memory allows faster
+-- compression and a better compression ratio.
+--
+-- The total amount of memory used for compression depends on the 'WindowBits'
+-- and the 'MemoryLevel'. For decompression it depends only on the
+-- 'WindowBits'. The totals are given by the functions:
+--
+-- > compressTotal windowBits memLevel = 4 * 2^windowBits + 512 * 2^memLevel
+-- > decompressTotal windowBits = 2^windowBits
+--
+-- For example, for compression with the default @windowBits = 15@ and
+-- @memLevel = 8@ uses @256Kb@. So for example a network server with 100
+-- concurrent compressed streams would use @25Mb@. The memory per stream can be
+-- halved (at the cost of somewhat degraded and slower compressionby) by
+-- reducing the @windowBits@ and @memLevel@ by one.
+--
+-- Decompression takes less memory, the default @windowBits = 15@ corresponds
+-- to just @32Kb@.
 --
 data MemoryLevel =
     DefaultMemoryLevel -- ^ The default. (Equivalent to @'MemoryLevel' 8@)
