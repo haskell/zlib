@@ -48,6 +48,13 @@ import Codec.Compression.Zlib.Stream (Stream)
 -- | The full set of parameters for compression. The defaults are
 -- 'defaultCompressParams'.
 --
+-- The 'compressBufferSize' is the size of the first output buffer containing
+-- the compressed data. If you know an approximate upper bound on the size of
+-- the compressed data then setting this parameter can save memory. The default
+-- compression output buffer size is @16k@. If your extimate is wrong it does
+-- not matter too much, the default buffer size will be used for the remaining
+-- chunks.
+--
 data CompressParams = CompressParams {
   compressLevel       :: Stream.CompressionLevel,
   compressMethod      :: Stream.Method,
@@ -58,13 +65,32 @@ data CompressParams = CompressParams {
 }
 
 -- | The full set of parameters for decompression. The defaults are
--- 'defaultCompressParams'.
+-- 'defaultDecompressParams'.
+--
+-- The 'decompressBufferSize' is the size of the first output buffer,
+-- containing the uncompressed data. If you know an exact or approximate upper
+-- bound on the size of the decompressed data then setting this parameter can
+-- save memory. The default decompression output buffer size is @32k@. If your
+-- extimate is wrong it does not matter too much, the default buffer size will
+-- be used for the remaining chunks.
+--
+-- One particular use case for setting the 'decompressBufferSize' is if you
+-- know the exact size of the decompressed data and want to produce a strict
+-- 'Data.ByteString.ByteString'. The compression and deccompression functions
+-- use lazy 'Data.ByteString.Lazy.ByteString's but if you set the
+-- 'decompressBufferSize' correctly then you can generate a lazy
+-- 'Data.ByteString.Lazy.ByteString' with exactly one chunk, which can be
+-- converted to a strict 'Data.ByteString.ByteString' in @O(1)@ time using
+-- @'Data.ByteString.concat' . 'Data.ByteString.Lazy.toChunks'@.
 --
 data DecompressParams = DecompressParams {
   decompressWindowBits :: Stream.WindowBits,
   decompressBufferSize :: Int
 }
 
+-- | The default set of parameters for compression. This is typically used with
+-- the @compressWith@ function with specific paramaters overridden.
+--
 defaultCompressParams :: CompressParams
 defaultCompressParams = CompressParams {
   compressLevel       = Stream.DefaultCompression,
@@ -75,6 +101,9 @@ defaultCompressParams = CompressParams {
   compressBufferSize  = defaultCompressBufferSize
 }
 
+-- | The default set of parameters for decompression. This is typically used with
+-- the @compressWith@ function with specific paramaters overridden.
+--
 defaultDecompressParams :: DecompressParams
 defaultDecompressParams = DecompressParams {
   decompressWindowBits = Stream.DefaultWindowBits,
