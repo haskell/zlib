@@ -65,7 +65,9 @@ decompress = Internal.decompress Zlib defaultDecompressParams
 
 
 -- | Like 'decompress' but with the ability to specify various decompression
--- parameters.
+-- parameters. Typical usage:
+--
+-- > decompressWith defaultCompressParams { ... }
 --
 decompressWith :: DecompressParams -> ByteString -> ByteString
 decompressWith = Internal.decompress Zlib
@@ -82,7 +84,11 @@ compress = Internal.compress Zlib defaultCompressParams
 
 
 -- | Like 'compress' but with the ability to specify various compression
--- parameters. In particular you can set the compression level:
+-- parameters. Typical usage:
+--
+-- > compressWith defaultCompressParams { ... }
+--
+-- In particular you can set the compression level:
 --
 -- > compressWith defaultCompressParams { compressLevel = BestCompression }
 --
