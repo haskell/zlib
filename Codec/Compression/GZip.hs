@@ -45,7 +45,6 @@ module Codec.Compression.GZip (
   DecompressParams(..), defaultDecompressParams,
 
   -- ** The compression parameter types
-  Format(..),
   CompressionLevel(..),
   Method(..),
   WindowBits(..),
