@@ -91,9 +91,12 @@ decompressWith = Internal.decompress GZip
 
 -- | Compress a stream of data into the gzip format.
 --
--- This uses the default compression level which favours a higher compression
--- ratio over compression speed, though it does not use the maximum compression
--- level. Use 'compressWith' to adjust the compression level.
+-- This uses the default compression parameters. In partiular it uses the
+-- default compression level which favours a higher compression ratio over
+-- compression speed, though it does not use the maximum compression level.
+--
+-- Use 'compressWith' to adjust the compression level or other compression
+-- parameters.
 --
 compress :: ByteString -> ByteString
 compress = Internal.compress GZip defaultCompressParams
