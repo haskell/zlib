@@ -12,7 +12,7 @@
 -----------------------------------------------------------------------------
 module Codec.Compression.Zlib.Internal (
 
-  -- * Compression and decompression
+  -- * Compression
   compress,
   CompressParams(..),
   defaultCompressParams,
