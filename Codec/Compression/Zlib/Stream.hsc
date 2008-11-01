@@ -1,5 +1,4 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-{-# OPTIONS_GHC -fno-warn-missing-methods #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) 2006-2008 Duncan Coutts
@@ -376,12 +375,12 @@ data Status =
                 --   'BuferError' is not fatal, and 'inflate' can be called
                 --   again with more input and more output space to continue.
 
-instance Enum Status where
-  toEnum (#{const Z_OK})         = Ok
-  toEnum (#{const Z_STREAM_END}) = StreamEnd
-  toEnum (#{const Z_NEED_DICT})  = NeedDict
-  toEnum (#{const Z_BUF_ERROR})  = BufferError
-  toEnum other = error ("unexpected zlib status: " ++ show other)
+toStatus :: CInt -> Status
+toStatus (#{const Z_OK})         = Ok
+toStatus (#{const Z_STREAM_END}) = StreamEnd
+toStatus (#{const Z_NEED_DICT})  = NeedDict
+toStatus (#{const Z_BUF_ERROR})  = BufferError
+toStatus other = error ("unexpected zlib status: " ++ show other)
 
 failIfError :: CInt -> Stream ()
 failIfError errno
@@ -409,12 +408,12 @@ data Flush =
   | Finish
 --  | Block -- only available in zlib 1.2 and later, uncomment if you need it.
 
-instance Enum Flush where
-  fromEnum NoFlush   = #{const Z_NO_FLUSH}
-  fromEnum SyncFlush = #{const Z_SYNC_FLUSH}
-  fromEnum FullFlush = #{const Z_FULL_FLUSH}
-  fromEnum Finish    = #{const Z_FINISH}
---  fromEnum Block     = #{const Z_BLOCK}
+fromFlush :: Flush -> CInt
+fromFlush NoFlush   = #{const Z_NO_FLUSH}
+fromFlush SyncFlush = #{const Z_SYNC_FLUSH}
+fromFlush FullFlush = #{const Z_FULL_FLUSH}
+fromFlush Finish    = #{const Z_FINISH}
+--  fromFlush Block     = #{const Z_BLOCK}
 
 -- | The format used for compression or decompression. There are three
 -- variations.
@@ -447,8 +446,8 @@ data Method = Deflated -- ^ \'Deflate\' is the only method supported in this
                        -- version of zlib. Indeed it is likely to be the only
                        -- method that ever will be supported.
 
-instance Enum Method where
-  fromEnum Deflated = #{const Z_DEFLATED}
+fromMethod :: Method -> CInt
+fromMethod Deflated = #{const Z_DEFLATED}
 
 -- | The compression level parameter controls the amount of compression. This
 -- is a trade-off between the amount of compression and the time required to do
@@ -463,13 +462,13 @@ data CompressionLevel =
   | BestCompression      -- ^ The slowest compression method (best compression).
   | CompressionLevel Int -- ^ A specific compression level between 1 and 9.
 
-instance Enum CompressionLevel where
-  fromEnum DefaultCompression = -1
-  fromEnum NoCompression      = 0
-  fromEnum BestSpeed          = 1
-  fromEnum BestCompression    = 9
-  fromEnum (CompressionLevel n)
-           | n >= 1 && n <= 9 = n
+fromCompressionLevel :: CompressionLevel -> CInt
+fromCompressionLevel DefaultCompression   = -1
+fromCompressionLevel NoCompression        = 0
+fromCompressionLevel BestSpeed            = 1
+fromCompressionLevel BestCompression      = 9
+fromCompressionLevel (CompressionLevel n)
+           | n >= 1 && n <= 9 = fromIntegral n
            | otherwise        = error "CompressLevel must be in the range 1..9"
 
 -- | This specifies the size of the compression window. Larger values of this
@@ -487,11 +486,11 @@ instance Enum CompressionLevel where
 data WindowBits = DefaultWindowBits
                 | WindowBits Int
 
-windowBits :: Format -> WindowBits-> Int
+windowBits :: Format -> WindowBits-> CInt
 windowBits format bits = (formatModifier format) (checkWindowBits bits)
   where checkWindowBits DefaultWindowBits = 15
         checkWindowBits (WindowBits n)
-          | n >= 8 && n <= 15 = n
+          | n >= 8 && n <= 15 = fromIntegral n
           | otherwise         = error "WindowBits must be in the range 8..15"
         formatModifier Zlib       = id
         formatModifier GZip       = (+16)
@@ -527,13 +526,13 @@ data MemoryLevel =
                        --   (Equivalent to @'MemoryLevel' 9@)
   | MemoryLevel Int    -- ^ Use a specific level in the range @1..9@
 
-instance Enum MemoryLevel where
-  fromEnum DefaultMemoryLevel = 8
-  fromEnum MinMemoryLevel     = 1
-  fromEnum MaxMemoryLevel     = 9
-  fromEnum (MemoryLevel n)
-           | n >= 1 && n <= 9 = n
-           | otherwise        = error "MemoryLevel must be in the range 1..9"
+fromMemoryLevel :: MemoryLevel -> CInt
+fromMemoryLevel DefaultMemoryLevel = 8
+fromMemoryLevel MinMemoryLevel     = 1
+fromMemoryLevel MaxMemoryLevel     = 9
+fromMemoryLevel (MemoryLevel n)
+         | n >= 1 && n <= 9 = fromIntegral n
+         | otherwise        = error "MemoryLevel must be in the range 1..9"
 
 
 -- | The strategy parameter is used to tune the compression algorithm.
@@ -564,12 +563,12 @@ data CompressionStrategy =
                     --   allowing for a simpler decoder for special applications.
 -}
 
-instance Enum CompressionStrategy where
-  fromEnum DefaultStrategy = #{const Z_DEFAULT_STRATEGY}
-  fromEnum Filtered        = #{const Z_FILTERED}
-  fromEnum HuffmanOnly     = #{const Z_HUFFMAN_ONLY}
---  fromEnum RLE             = #{const Z_RLE}
---  fromEnum Fixed           = #{const Z_FIXED}
+fromCompressionStrategy :: CompressionStrategy -> CInt
+fromCompressionStrategy DefaultStrategy = #{const Z_DEFAULT_STRATEGY}
+fromCompressionStrategy Filtered        = #{const Z_FILTERED}
+fromCompressionStrategy HuffmanOnly     = #{const Z_HUFFMAN_ONLY}
+--fromCompressionStrategy RLE             = #{const Z_RLE}
+--fromCompressionStrategy Fixed           = #{const Z_FIXED}
 
 withStreamPtr :: (Ptr StreamState -> IO a) -> Stream a
 withStreamPtr f = do
@@ -628,27 +627,27 @@ deflateInit format compLevel method bits memLevel strategy = do
   checkFormatSupported format
   err <- withStreamState $ \zstream ->
     c_deflateInit2 zstream
-                  (fromIntegral (fromEnum compLevel))
-                  (fromIntegral (fromEnum method))
-                  (fromIntegral (windowBits format bits))
-                  (fromIntegral (fromEnum memLevel))
-                  (fromIntegral (fromEnum strategy))
+                  (fromCompressionLevel compLevel)
+                  (fromMethod method)
+                  (windowBits format bits)
+                  (fromMemoryLevel memLevel)
+                  (fromCompressionStrategy strategy)
   failIfError err
   getStreamState >>= unsafeLiftIO . addForeignPtrFinalizer c_deflateEnd
 
 inflate_ :: Flush -> Stream Status
 inflate_ flush = do
   err <- withStreamState $ \zstream ->
-    c_inflate zstream (fromIntegral (fromEnum flush))
+    c_inflate zstream (fromFlush flush)
   failIfError err
-  return (toEnum (fromIntegral err))
+  return (toStatus err)
 
 deflate_ :: Flush -> Stream Status
 deflate_ flush = do
   err <- withStreamState $ \zstream ->
-    c_deflate zstream (fromIntegral (fromEnum flush))
+    c_deflate zstream (fromFlush flush)
   failIfError err
-  return (toEnum (fromIntegral err))
+  return (toStatus err)
 
 -- | This never needs to be used as the stream's resources will be released
 -- automatically when no longer needed, however this can be used to release
