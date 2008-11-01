@@ -1,3 +1,4 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
 {-# OPTIONS_GHC -fno-warn-missing-methods #-}
 -----------------------------------------------------------------------------
 -- |
