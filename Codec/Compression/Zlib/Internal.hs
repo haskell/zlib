@@ -123,7 +123,6 @@ defaultCompressBufferSize   = 16 * 1024 - L.chunkOverhead
 defaultDecompressBufferSize = 32 * 1024 - L.chunkOverhead
 #endif
 
-{-# NOINLINE compress #-}
 compress
   :: Stream.Format
   -> CompressParams
@@ -215,7 +214,6 @@ compress format
       Stream.NeedDict    -> fail "NeedDict is impossible!"
 
 
-{-# NOINLINE decompress #-}
 decompress
   :: Stream.Format
   -> DecompressParams
