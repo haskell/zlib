@@ -269,6 +269,8 @@ run (Z m) = unsafePerformIO $ do
   (_,_,_,_,a) <- m stream nullForeignPtr nullForeignPtr 0 0
   return a
 
+-- This is marked as unsafe because run uses unsafePerformIO so anything
+-- lifted here will end up being unsafePerformIO'd.
 unsafeLiftIO :: IO a -> Stream a
 unsafeLiftIO m = Z $ \_stream inBuf outBuf outOffset outLength -> do
   a <- m
