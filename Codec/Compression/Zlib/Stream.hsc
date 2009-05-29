@@ -37,6 +37,7 @@ module Codec.Compression.Zlib.Stream (
   inflate,
   Status(..),
   Flush(..),
+  ErrorCode(..),
 
   -- * Buffer management
   -- ** Input buffer
@@ -371,37 +372,45 @@ consistencyCheck = do
 data Status =
     Ok
   | StreamEnd
-  | NeedDict
+  | Error ErrorCode String
+
+data ErrorCode =
+    NeedDict
+  | FileError
+  | StreamError
+  | DataError
+  | MemoryError
   | BufferError -- ^ No progress was possible or there was not enough room in
                 --   the output buffer when 'Finish' is used. Note that
                 --   'BuferError' is not fatal, and 'inflate' can be called
                 --   again with more input and more output space to continue.
+  | VersionError
+  | Unexpected
 
-toStatus :: CInt -> Status
-toStatus (#{const Z_OK})         = Ok
-toStatus (#{const Z_STREAM_END}) = StreamEnd
-toStatus (#{const Z_NEED_DICT})  = NeedDict
-toStatus (#{const Z_BUF_ERROR})  = BufferError
-toStatus other = error ("unexpected zlib status: " ++ show other)
+toStatus :: CInt -> Stream Status
+toStatus errno = case errno of
+  (#{const Z_OK})            -> return Ok
+  (#{const Z_STREAM_END})    -> return StreamEnd
+  (#{const Z_NEED_DICT})     -> err NeedDict     "custom dictionary needed"
+  (#{const Z_BUF_ERROR})     -> err BufferError  "buffer error"
+  (#{const Z_ERRNO})         -> err FileError    "file error"
+  (#{const Z_STREAM_ERROR})  -> err StreamError  "stream error"
+  (#{const Z_DATA_ERROR})    -> err DataError    "data error"
+  (#{const Z_MEM_ERROR})     -> err MemoryError  "insufficient memory"
+  (#{const Z_VERSION_ERROR}) -> err VersionError "incompatible zlib version"
+  other                      -> return $ Error Unexpected
+                                  ("unexpected zlib status: " ++ show other)
+ where
+   err errCode altMsg = liftM (Error errCode) $ do
+    msgPtr <- withStreamPtr (#{peek z_stream, msg})
+    if msgPtr /= nullPtr
+     then unsafeLiftIO (peekCAString msgPtr)
+     else return altMsg
 
 failIfError :: CInt -> Stream ()
-failIfError errno
-  | errno >= 0
- || errno == #{const Z_BUF_ERROR} = return ()
-  | otherwise                     = fail =<< getErrorMessage errno
-
-getErrorMessage :: CInt -> Stream String
-getErrorMessage errno = do
-  msgPtr <- withStreamPtr (#{peek z_stream, msg})
-  if msgPtr /= nullPtr
-    then unsafeLiftIO (peekCAString msgPtr)
-    else return $ case errno of
-      #{const Z_ERRNO}         -> "file error"
-      #{const Z_STREAM_ERROR}  -> "stream error"
-      #{const Z_DATA_ERROR}    -> "data error"
-      #{const Z_MEM_ERROR}     -> "insufficient memory"
-      #{const Z_VERSION_ERROR} -> "incompatible version"
-      _                        -> "unknown error"
+failIfError errno = toStatus errno >>= \status -> case status of
+  (Error _ msg) -> fail msg
+  _             -> return ()
 
 data Flush =
     NoFlush
@@ -641,15 +650,13 @@ inflate_ :: Flush -> Stream Status
 inflate_ flush = do
   err <- withStreamState $ \zstream ->
     c_inflate zstream (fromFlush flush)
-  failIfError err
-  return (toStatus err)
+  toStatus err
 
 deflate_ :: Flush -> Stream Status
 deflate_ flush = do
   err <- withStreamState $ \zstream ->
     c_deflate zstream (fromFlush flush)
-  failIfError err
-  return (toStatus err)
+  toStatus err
 
 -- | This never needs to be used as the stream's resources will be released
 -- automatically when no longer needed, however this can be used to release

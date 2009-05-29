@@ -30,6 +30,11 @@ module Codec.Compression.Zlib.Internal (
   Stream.WindowBits(..),
   Stream.MemoryLevel(..),
   Stream.CompressionStrategy(..),
+
+  -- * Low-level API to get explicit error reports
+  decompressWithErrors,
+  DecompressStream(..),
+  DecompressError(..),
   ) where
 
 import Prelude hiding (length)
@@ -123,6 +128,65 @@ defaultCompressBufferSize   = 16 * 1024 - L.chunkOverhead
 defaultDecompressBufferSize = 32 * 1024 - L.chunkOverhead
 #endif
 
+-- | A sequence of chunks of data produced from decompression.
+--
+-- The difference from a simple list is that it contains a representation of
+-- errors as data rather than as exceptions. This allows you to handle error
+-- conditions explicitly.
+--
+data DecompressStream = StreamEnd
+                      | StreamChunk S.ByteString DecompressStream
+
+                        -- | An error code and a human readable error message.
+                      | StreamError DecompressError String
+
+-- | The possible error cases when decompressing a stream.
+--
+data DecompressError =
+     -- | The compressed data stream ended prematurely. This may happen if the
+     -- input data stream was truncated.
+     TruncatedInput
+
+     -- | It is possible to do zlib compression with a custom dictionary. This
+     -- allows slightly higher compression ratios for short files. However such
+     -- compressed streams require the same dictionary when decompressing. This
+     -- zlib binding does not currently support custom dictionaries. This error
+     -- is for when we encounter a compressed stream that needs a dictionary.
+   | DictionaryRequired
+
+     -- | If the compressed data stream is corrupted in any way then you will
+     -- get this error, for example if the input data just isn't a compressed
+     -- zlib data stream. In particular if the data checksum turns out to be
+     -- wrong then you will get all the decompressed data but this error at the
+     -- end, instead of the normal sucessful 'StreamEnd'.
+   | DataError
+
+-- | Fold an 'DecompressionStream'. Just like 'foldr' but with an extra error
+-- case. For example to convert to a list and translate the errors into exceptions:
+--
+-- > foldDecompressStream (:) [] (\code msg -> error msg)
+--
+foldDecompressStream :: (S.ByteString -> a -> a) -> a
+                 -> (DecompressError -> String -> a)
+                 -> DecompressStream -> a
+foldDecompressStream chunk end err = fold
+  where
+    fold StreamEnd               = end
+    fold (StreamChunk bs stream) = chunk bs (fold stream)
+    fold (StreamError code msg)  = err code msg
+
+fromDecompressStream :: DecompressStream -> L.ByteString
+fromDecompressStream =
+  foldDecompressStream L.Chunk L.Empty
+    (\_code msg -> error ("Codec.Compression.Zlib: " ++ msg))
+
+-- | Compress a data stream.
+--
+-- There are no expected error conditions. All input data streams are valid. It
+-- is possible for unexpected errors to occur, such as running out of memory,
+-- or finding the wrong version of the zlib C library, these are thrown as
+-- exceptions.
+--
 compress
   :: Stream.Format
   -> CompressParams
@@ -210,17 +274,42 @@ compress format
                   return [S.PS outFPtr offset length]
           else do Stream.finalise
                   return []
-      Stream.BufferError -> fail "BufferError should be impossible!"
-      Stream.NeedDict    -> fail "NeedDict is impossible!"
+
+      Stream.Error code msg -> case code of
+        Stream.BufferError  -> fail "BufferError should be impossible!"
+        Stream.NeedDict     -> fail "NeedDict is impossible!"
+        _                   -> fail msg
 
 
+-- | Decompress a data stream.
+--
+-- It will throw an exception if any error is encountered in the input data. If
+-- you need more control over error handling then use 'decompressWithErrors'.
+--
 decompress
   :: Stream.Format
   -> DecompressParams
   -> L.ByteString
   -> L.ByteString
-decompress format (DecompressParams bits initChunkSize) input =
-  L.fromChunks $ Stream.run $ do
+decompress format params = fromDecompressStream
+                         . decompressWithErrors format params
+
+-- | Like 'decompress' but returns a 'DecompressStream' data structure that
+-- contains an explicit representation of the error conditions that one may
+-- encounter when decompressing.
+--
+-- Note that in addition to errors in the input data, it is possible for other
+-- unexpected errors to occur, such as out of memory, or finding the wrong
+-- version of the zlib C library, these are still thrown as exceptions (because
+-- representing them as data would make this function impure).
+--
+decompressWithErrors
+  :: Stream.Format
+  -> DecompressParams
+  -> L.ByteString
+  -> DecompressStream
+decompressWithErrors format (DecompressParams bits initChunkSize) input =
+  Stream.run $ do
     Stream.inflateInit format bits
     case L.toChunks input of
       [] -> fillBuffers 4 [] --always an error anyway
@@ -237,7 +326,7 @@ decompress format (DecompressParams bits initChunkSize) input =
 
   fillBuffers :: Int
               -> [S.ByteString]
-              -> Stream [S.ByteString]
+              -> Stream DecompressStream
   fillBuffers outChunkSize inChunks = do
 
     -- in this state there are two possabilities:
@@ -265,7 +354,7 @@ decompress format (DecompressParams bits initChunkSize) input =
 
   drainBuffers ::
       [S.ByteString]
-   -> Stream [S.ByteString]
+   -> Stream DecompressStream
   drainBuffers inChunks = do
 
     inputBufferEmpty' <- Stream.inputBufferEmpty
@@ -284,19 +373,27 @@ decompress format (DecompressParams bits initChunkSize) input =
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   outChunks <- Stream.unsafeInterleave
                     (fillBuffers defaultDecompressBufferSize inChunks)
-                  return (S.PS outFPtr offset length : outChunks)
+                  return $ StreamChunk (S.PS outFPtr offset length) outChunks
           else do fillBuffers defaultDecompressBufferSize inChunks
 
-      Stream.StreamEnd -> do
-        -- Note that there may be input bytes still available if the stream
-        -- is embeded in some other data stream. Here we just silently discard
-        -- any trailing data.
-        outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
-        if outputBufferBytesAvailable > 0
-          then do (outFPtr, offset, length) <- Stream.popOutputBuffer
-                  Stream.finalise
-                  return [S.PS outFPtr offset length]
-          else do Stream.finalise
-                  return []
-      Stream.BufferError -> fail "premature end of compressed stream"
-      Stream.NeedDict    -> fail "compressed stream needs a custom dictionary"
+      Stream.StreamEnd      -> finish StreamEnd
+      Stream.Error code msg -> case code of
+        Stream.BufferError  -> finish (StreamError TruncatedInput msg')
+          where msg' = "premature end of compressed stream"
+        Stream.NeedDict     -> finish (StreamError DictionaryRequired msg)
+        Stream.DataError    -> finish (StreamError DataError msg)
+        _                   -> fail msg
+
+  -- Note even if we end with an error we still try to flush the last chunk if
+  -- there is one. The user just has to decide what they want to trust.
+  finish end = do
+    -- Note that there may be input bytes still available if the stream
+    -- is embeded in some other data stream. Here we just silently discard
+    -- any trailing data.
+    outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
+    if outputBufferBytesAvailable > 0
+      then do (outFPtr, offset, length) <- Stream.popOutputBuffer
+              Stream.finalise
+              return (StreamChunk (S.PS outFPtr offset length) end)
+      else do Stream.finalise
+              return end
