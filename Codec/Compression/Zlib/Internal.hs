@@ -38,7 +38,7 @@ module Codec.Compression.Zlib.Internal (
   ) where
 
 import Prelude hiding (length)
-import Control.Monad (when)
+import Control.Monad (when, ap, msum)
 import Control.Exception (assert)
 import qualified Data.ByteString.Lazy as L
 #ifdef BYTESTRING_IN_BASE
@@ -47,6 +47,7 @@ import qualified Data.ByteString.Base as S
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString.Internal as S
 #endif
+import Test.QuickCheck
 
 import qualified Codec.Compression.Zlib.Stream as Stream
 import Codec.Compression.Zlib.Stream (Stream)
@@ -68,7 +69,35 @@ data CompressParams = CompressParams {
   compressMemoryLevel :: Stream.MemoryLevel,
   compressStrategy    :: Stream.CompressionStrategy,
   compressBufferSize  :: Int
-}
+} deriving Show
+instance Arbitrary CompressParams where
+  arbitrary = return CompressParams `ap` arbitrary `ap` arbitrary
+                                    `ap` arbitrary `ap` arbitrary
+                                    `ap` arbitrary `ap` arbitraryBufferSize
+
+  -- this definition (and the equivalent in DecompressParams below) could be
+  -- made nicer using Data.Accessor, but it's probably not worth the
+  -- dependency
+  shrink cp = msum [
+                return (\lv -> cp { compressLevel = lv }) `ap`
+                                         shrink (compressLevel cp),
+                return (\mt -> cp { compressMethod = mt }) `ap`
+                                         shrink (compressMethod cp),
+                return (\wb -> cp { compressWindowBits = wb }) `ap`
+                                         shrink (compressWindowBits cp),
+                return (\ml -> cp { compressMemoryLevel = ml }) `ap`
+                                         shrink (compressMemoryLevel cp),
+                return (\st -> cp { compressStrategy = st }) `ap`
+                                         shrink (compressStrategy cp),
+                return (\bs -> cp { compressBufferSize = bs }) `ap`
+                                         shrink (compressBufferSize cp)
+              ]
+
+arbitraryBufferSize :: Gen Int
+arbitraryBufferSize = frequency $ [(10, return n) | n <- [1..1024]] ++
+                                  [(20, return n) | n <- [1025..8192]] ++
+                                  [(40, return n) | n <- [8193..131072]] ++
+                                  [(1, return n) | n <- [131072..1048576]]
 
 -- | The full set of parameters for decompression. The defaults are
 -- 'defaultDecompressParams'.
@@ -92,7 +121,16 @@ data CompressParams = CompressParams {
 data DecompressParams = DecompressParams {
   decompressWindowBits :: Stream.WindowBits,
   decompressBufferSize :: Int
-}
+} deriving Show
+
+instance Arbitrary DecompressParams where
+  arbitrary = return DecompressParams `ap` arbitrary `ap` arbitraryBufferSize
+  shrink dp = msum [
+                return (\wb -> dp { decompressWindowBits = wb }) `ap`
+                      shrink (decompressWindowBits dp),
+                return (\bs -> dp { decompressBufferSize = bs }) `ap`
+                      shrink (decompressBufferSize dp)
+              ]
 
 -- | The default set of parameters for compression. This is typically used with
 -- the @compressWith@ function with specific parameters overridden.
