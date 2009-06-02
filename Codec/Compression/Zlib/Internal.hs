@@ -95,7 +95,7 @@ data DecompressParams = DecompressParams {
 }
 
 -- | The default set of parameters for compression. This is typically used with
--- the @compressWith@ function with specific paramaters overridden.
+-- the @compressWith@ function with specific parameters overridden.
 --
 defaultCompressParams :: CompressParams
 defaultCompressParams = CompressParams {
@@ -108,7 +108,7 @@ defaultCompressParams = CompressParams {
 }
 
 -- | The default set of parameters for decompression. This is typically used with
--- the @compressWith@ function with specific paramaters overridden.
+-- the @compressWith@ function with specific parameters overridden.
 --
 defaultDecompressParams :: DecompressParams
 defaultDecompressParams = DecompressParams {
