@@ -1,6 +1,10 @@
 module Test where
 
 import Codec.Compression.Zlib.Internal
+
+import Test.Codec.Compression.Zlib.Internal
+import Test.Codec.Compression.Zlib.Stream
+
 import Control.Monad
 import Data.Word
 import Test.QuickCheck

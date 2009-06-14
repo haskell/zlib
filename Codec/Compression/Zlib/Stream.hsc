@@ -75,8 +75,6 @@ import System.IO (hPutStrLn, stderr)
 import Control.Monad (liftM)
 import Control.Exception (assert)
 
-import Test.QuickCheck
-
 import Prelude hiding (length)
 
 #include "zlib.h"
@@ -451,22 +449,13 @@ data Format =
   | GZipOrZlib -- ^ This is not a format as such. It enabled zlib or gzip
                -- decoding with automatic header detection. This only makes
                -- sense for decompression.
-  deriving (Eq, Show)
-
-instance Arbitrary Format where
-  -- GZipOrZlib omitted since it's not symmetric
-  arbitrary = elements [GZip, Zlib, Raw]
-
+  deriving Eq
 
 -- | The compression method
 --
 data Method = Deflated -- ^ \'Deflate\' is the only method supported in this
                        -- version of zlib. Indeed it is likely to be the only
                        -- method that ever will be supported.
-  deriving Show
-
-instance Arbitrary Method where
-   arbitrary = return Deflated
 
 fromMethod :: Method -> CInt
 fromMethod Deflated = #{const Z_DEFLATED}
@@ -483,11 +472,6 @@ data CompressionLevel =
   | BestSpeed            -- ^ The fastest compression method (less compression) 
   | BestCompression      -- ^ The slowest compression method (best compression).
   | CompressionLevel Int -- ^ A specific compression level between 1 and 9.
-  deriving Show
-
-instance Arbitrary CompressionLevel where
-  arbitrary = elements $ [DefaultCompression, NoCompression, BestCompression] ++
-                         map CompressionLevel [1..9]
 
 fromCompressionLevel :: CompressionLevel -> CInt
 fromCompressionLevel DefaultCompression   = -1
@@ -511,13 +495,11 @@ fromCompressionLevel (CompressionLevel n)
 -- 'MemoryLevel'. See the 'MemoryLevel' for the details.
 --
 data WindowBits = WindowBits Int
-                | DefaultWindowBits
-  deriving (Show, Eq, Ord)
-
-instance Arbitrary WindowBits where
-  arbitrary = elements $ DefaultWindowBits:map WindowBits [8..15]
-  shrink DefaultWindowBits = []
-  shrink (WindowBits n) = DefaultWindowBits:map WindowBits [n+1..15]
+                | DefaultWindowBits -- This constructor must be last to make
+		                    -- the Ord instance work. The Ord instance
+				    -- is defined with and used by the tests.
+				    -- It makse sense because the default value
+				    -- is is also the max value at 15.
 
 windowBits :: Format -> WindowBits-> CInt
 windowBits format bits = (formatModifier format) (checkWindowBits bits)
@@ -558,11 +540,6 @@ data MemoryLevel =
   | MaxMemoryLevel     -- ^ Use maximum memory for optimal compression speed.
                        --   (Equivalent to @'MemoryLevel' 9@)
   | MemoryLevel Int    -- ^ Use a specific level in the range @1..9@
-  deriving Show
-
-instance Arbitrary MemoryLevel where
-  arbitrary = elements $ [DefaultMemoryLevel, MinMemoryLevel, MaxMemoryLevel] ++
-                         [MemoryLevel n | n <- [1..9]]
 
 fromMemoryLevel :: MemoryLevel -> CInt
 fromMemoryLevel DefaultMemoryLevel = 8
@@ -600,11 +577,6 @@ data CompressionStrategy =
   | Fixed           -- ^ 'Fixed' prevents the use of dynamic Huffman codes,
                     --   allowing for a simpler decoder for special applications.
 -}
-  deriving Show
-
-instance Arbitrary CompressionStrategy where
-  arbitrary = elements $ [DefaultStrategy, Filtered, HuffmanOnly]
-                   -- ++ [RLE, Fixed]
 
 fromCompressionStrategy :: CompressionStrategy -> CInt
 fromCompressionStrategy DefaultStrategy = #{const Z_DEFAULT_STRATEGY}
