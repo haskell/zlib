@@ -26,11 +26,30 @@ module Codec.Compression.Zlib.Stream (
 
   -- ** Initialisation parameters
   Format(..),
+    gzipFormat,
+    zlibFormat,
+    rawFormat,
+    gzipOrZlibFormat,
   CompressionLevel(..),
+    defaultCompression,
+    noCompression,
+    bestSpeed,
+    bestCompression,
+    compressionLevel,
   Method(..),
+    deflateMethod,
   WindowBits(..),
+    defaultWindowBits,
+    windowBits,
   MemoryLevel(..),
+    defaultMemoryLevel,
+    minMemoryLevel,
+    maxMemoryLevel,
+    memoryLevel,
   CompressionStrategy(..),
+    defaultStrategy,
+    filteredStrategy,
+    huffmanOnlyStrategy,
 
   -- * The buisness
   deflate,
@@ -412,6 +431,7 @@ failIfError errno = toStatus errno >>= \status -> case status of
   (Error _ msg) -> fail msg
   _             -> return ()
 
+
 data Flush =
     NoFlush
   | SyncFlush
@@ -426,52 +446,105 @@ fromFlush FullFlush = #{const Z_FULL_FLUSH}
 fromFlush Finish    = #{const Z_FINISH}
 --  fromFlush Block     = #{const Z_BLOCK}
 
+
 -- | The format used for compression or decompression. There are three
 -- variations.
 --
-data Format =
-    GZip -- ^ The gzip format uses a header with a checksum and some optional
-         -- meta-data about the compressed file. It is intended primarily for
-         -- compressing individual files but is also sometimes used for network
-         -- protocols such as HTTP. The format is described in detail in RFC
-         -- #1952 <http://www.ietf.org/rfc/rfc1952.txt>
-
-  | Zlib -- | The zlib format uses a minimal header with a checksum but no
-         -- other meta-data. It is especially designed for use in network
-         -- protocols. The format is described in detail in RFC #1950
-         -- <http://www.ietf.org/rfc/rfc1950.txt>
-
-  | Raw  -- | The \'raw\' format is just the compressed data stream without any
-         -- additional header, meta-data or data-integrity checksum. The format
-         -- is described in detail in RFC #1951
-         -- <http://www.ietf.org/rfc/rfc1951.txt>
-
-  | GZipOrZlib -- ^ This is not a format as such. It enabled zlib or gzip
-               -- decoding with automatic header detection. This only makes
-               -- sense for decompression.
+data Format = GZip | Zlib | Raw | GZipOrZlib
   deriving Eq
+
+{-# DEPRECATED GZip       "Use gzipFormat. Format constructors will be hidden in version 0.7"       #-}
+{-# DEPRECATED Zlib       "Use zlibFormat. Format constructors will be hidden in version 0.7"       #-}
+{-# DEPRECATED Raw        "Use rawFormat. Format constructors will be hidden in version 0.7"        #-}
+{-# DEPRECATED GZipOrZlib "Use gzipOrZlibFormat. Format constructors will be hidden in version 0.7" #-}
+
+-- | The gzip format uses a header with a checksum and some optional meta-data
+-- about the compressed file. It is intended primarily for compressing
+-- individual files but is also sometimes used for network protocols such as
+-- HTTP. The format is described in detail in RFC #1952
+-- <http://www.ietf.org/rfc/rfc1952.txt>
+--
+gzipFormat :: Format
+gzipFormat = GZip
+
+-- | The zlib format uses a minimal header with a checksum but no other
+-- meta-data. It is especially designed for use in network protocols. The
+-- format is described in detail in RFC #1950
+-- <http://www.ietf.org/rfc/rfc1950.txt>
+--
+zlibFormat :: Format
+zlibFormat = Zlib
+
+-- | The \'raw\' format is just the compressed data stream without any
+-- additional header, meta-data or data-integrity checksum. The format is
+-- described in detail in RFC #1951 <http://www.ietf.org/rfc/rfc1951.txt>
+--
+rawFormat :: Format
+rawFormat = Raw
+
+-- | This is not a format as such. It enabled zlib or gzip decoding with
+-- automatic header detection. This only makes sense for decompression.
+--
+gzipOrZlibFormat :: Format
+gzipOrZlibFormat = GZipOrZlib
+
 
 -- | The compression method
 --
-data Method = Deflated -- ^ \'Deflate\' is the only method supported in this
-                       -- version of zlib. Indeed it is likely to be the only
-                       -- method that ever will be supported.
+data Method = Deflated
+
+{-# DEPRECATED Deflated "Use deflateMethod. Method constructors will be hidden in version 0.7" #-}
+
+-- | \'Deflate\' is the only method supported in this version of zlib.
+-- Indeed it is likely to be the only method that ever will be supported.
+--
+deflateMethod :: Method
+deflateMethod = Deflated
 
 fromMethod :: Method -> CInt
 fromMethod Deflated = #{const Z_DEFLATED}
+
 
 -- | The compression level parameter controls the amount of compression. This
 -- is a trade-off between the amount of compression and the time required to do
 -- the compression.
 --
 data CompressionLevel = 
-    DefaultCompression   -- ^ The default compression level is 6 (that is, 
-                         --   biased towards higher compression at expense of
-			 -- speed).
-  | NoCompression        -- ^ No compression, just a block copy.
-  | BestSpeed            -- ^ The fastest compression method (less compression) 
-  | BestCompression      -- ^ The slowest compression method (best compression).
-  | CompressionLevel Int -- ^ A specific compression level between 1 and 9.
+    DefaultCompression
+  | NoCompression
+  | BestSpeed
+  | BestCompression
+  | CompressionLevel Int
+
+{-# DEPRECATED DefaultCompression "Use defaultCompression. CompressionLevel constructors will be hidden in version 0.7" #-}
+{-# DEPRECATED NoCompression      "Use noCompression. CompressionLevel constructors will be hidden in version 0.7"      #-}
+{-# DEPRECATED BestSpeed          "Use bestSpeed. CompressionLevel constructors will be hidden in version 0.7"          #-}
+{-# DEPRECATED BestCompression    "Use bestCompression. CompressionLevel constructors will be hidden in version 0.7"    #-}
+--FIXME: cannot deprecate constructor named the same as the type
+{- DEPRECATED CompressionLevel   "Use compressionLevel. CompressionLevel constructors will be hidden in version 0.7"   -}
+
+-- | The default compression level is 6 (that is, biased towards higher
+-- compression at expense of speed).
+defaultCompression :: CompressionLevel
+defaultCompression = DefaultCompression
+
+-- | No compression, just a block copy.
+noCompression :: CompressionLevel
+noCompression = CompressionLevel 0
+
+-- | The fastest compression method (less compression)
+bestSpeed :: CompressionLevel
+bestSpeed = CompressionLevel 1
+
+-- | The slowest compression method (best compression).
+bestCompression :: CompressionLevel
+bestCompression = CompressionLevel 9
+
+-- | A specific compression level between 0 and 9.
+compressionLevel :: Int -> CompressionLevel
+compressionLevel n
+  | n >= 0 && n <= 9 = CompressionLevel n
+  | otherwise        = error "CompressionLevel must be in the range 0..9"
 
 fromCompressionLevel :: CompressionLevel -> CInt
 fromCompressionLevel DefaultCompression   = -1
@@ -479,8 +552,9 @@ fromCompressionLevel NoCompression        = 0
 fromCompressionLevel BestSpeed            = 1
 fromCompressionLevel BestCompression      = 9
 fromCompressionLevel (CompressionLevel n)
-           | n >= 1 && n <= 9 = fromIntegral n
+           | n >= 0 && n <= 9 = fromIntegral n
            | otherwise        = error "CompressLevel must be in the range 1..9"
+
 
 -- | This specifies the size of the compression window. Larger values of this
 -- parameter result in better compression at the expense of higher memory
@@ -501,8 +575,24 @@ data WindowBits = WindowBits Int
 				    -- It makse sense because the default value
 				    -- is is also the max value at 15.
 
-windowBits :: Format -> WindowBits-> CInt
-windowBits format bits = (formatModifier format) (checkWindowBits bits)
+{-# DEPRECATED DefaultWindowBits  "Use defaultWindowBits. WindowBits constructors will be hidden in version 0.7" #-}
+--FIXME: cannot deprecate constructor named the same as the type
+{- DEPRECATED WindowBits         "Use windowBits. WindowBits constructors will be hidden in version 0.7"        -}
+
+-- | The default 'WindowBits' is 15 which is also the maximum size.
+--
+defaultWindowBits :: WindowBits
+defaultWindowBits = WindowBits 15
+
+-- | A specific compression window size, specified in bits in the range @8..15@
+--
+windowBits :: Int -> WindowBits
+windowBits n
+  | n >= 8 && n <= 15 = WindowBits n
+  | otherwise         = error "WindowBits must be in the range 8..15"
+
+fromWindowBits :: Format -> WindowBits-> CInt
+fromWindowBits format bits = (formatModifier format) (checkWindowBits bits)
   where checkWindowBits DefaultWindowBits = 15
         checkWindowBits (WindowBits n)
           | n >= 8 && n <= 15 = fromIntegral n
@@ -511,6 +601,7 @@ windowBits format bits = (formatModifier format) (checkWindowBits bits)
         formatModifier GZip       = (+16)
         formatModifier GZipOrZlib = (+32)
         formatModifier Raw        = negate
+
 
 -- | The 'MemoryLevel' parameter specifies how much memory should be allocated
 -- for the internal compression state. It is a tradoff between memory usage,
@@ -534,12 +625,40 @@ windowBits format bits = (formatModifier format) (checkWindowBits bits)
 -- to just @32Kb@.
 --
 data MemoryLevel =
-    DefaultMemoryLevel -- ^ The default. (Equivalent to @'MemoryLevel' 8@)
-  | MinMemoryLevel     -- ^ Use minimum memory. This is slow and reduces the
-                       --   compression ratio. (Equivalent to @'MemoryLevel' 1@)
-  | MaxMemoryLevel     -- ^ Use maximum memory for optimal compression speed.
-                       --   (Equivalent to @'MemoryLevel' 9@)
-  | MemoryLevel Int    -- ^ Use a specific level in the range @1..9@
+    DefaultMemoryLevel
+  | MinMemoryLevel
+  | MaxMemoryLevel
+  | MemoryLevel Int
+
+{-# DEPRECATED DefaultMemoryLevel "Use defaultMemoryLevel. MemoryLevel constructors will be hidden in version 0.7" #-}
+{-# DEPRECATED MinMemoryLevel     "Use minMemoryLevel. MemoryLevel constructors will be hidden in version 0.7"     #-}
+{-# DEPRECATED MaxMemoryLevel     "Use maxMemoryLevel. MemoryLevel constructors will be hidden in version 0.7"     #-}
+--FIXME: cannot deprecate constructor named the same as the type
+{- DEPRECATED MemoryLevel        "Use memoryLevel. MemoryLevel constructors will be hidden in version 0.7"        -}
+
+-- | The default memory level. (Equivalent to @'memoryLevel' 8@)
+--
+defaultMemoryLevel :: MemoryLevel
+defaultMemoryLevel = MemoryLevel 8
+
+-- | Use minimum memory. This is slow and reduces the compression ratio.
+-- (Equivalent to @'memoryLevel' 1@)
+--
+minMemoryLevel :: MemoryLevel
+minMemoryLevel = MemoryLevel 1
+
+-- | Use maximum memory for optimal compression speed.
+-- (Equivalent to @'memoryLevel' 9@)
+--
+maxMemoryLevel :: MemoryLevel
+maxMemoryLevel = MemoryLevel 9
+
+-- | A specific level in the range @1..9@
+--
+memoryLevel :: Int -> MemoryLevel
+memoryLevel n
+  | n >= 1 && n <= 9 = MemoryLevel n
+  | otherwise        = error "MemoryLevel must be in the range 1..9"
 
 fromMemoryLevel :: MemoryLevel -> CInt
 fromMemoryLevel DefaultMemoryLevel = 8
@@ -556,17 +675,9 @@ fromMemoryLevel (MemoryLevel n)
 -- correctness of the compressed output even if it is not set appropriately.
 --
 data CompressionStrategy =
-    DefaultStrategy -- ^ Use the 'DefaultStrategy' for normal data.
-  | Filtered        -- ^ Use 'Filtered' for data produced by a filter (or
-                    --   predictor). Filtered data consists mostly of small
-                    --   values with a somewhat random distribution. In this
-                    --   case, the compression algorithm is tuned to compress
-                    --   them better. The effect of Z_FILTERED is to force more
-                    --   Huffman coding and less string matching; it is
-                    --   somewhat intermediate between 'DefaultStrategy' and
-                    --   'HuffmanOnly'. 
-  | HuffmanOnly     -- ^ Use 'HuffmanOnly' to force Huffman encoding only (no
-                    --   string match). 
+    DefaultStrategy
+  | Filtered
+  | HuffmanOnly
 
 {-
 -- -- only available in zlib 1.2 and later, uncomment if you need it.
@@ -578,12 +689,39 @@ data CompressionStrategy =
                     --   allowing for a simpler decoder for special applications.
 -}
 
+{-# DEPRECATED DefaultStrategy "Use defaultStrategy. CompressionStrategy constructors will be hidden in version 0.7"     #-}
+{-# DEPRECATED Filtered        "Use filteredStrategy. CompressionStrategy constructors will be hidden in version 0.7"    #-}
+{-# DEPRECATED HuffmanOnly     "Use huffmanOnlyStrategy. CompressionStrategy constructors will be hidden in version 0.7" #-}
+
+-- | Use this default compression strategy for normal data.
+--
+defaultStrategy :: CompressionStrategy
+defaultStrategy = DefaultStrategy
+
+-- | Use the filtered compression strategy for data produced by a filter (or
+-- predictor). Filtered data consists mostly of small values with a somewhat
+-- random distribution. In this case, the compression algorithm is tuned to
+-- compress them better. The effect of this strategy is to force more Huffman
+-- coding and less string matching; it is somewhat intermediate between
+-- 'defaultCompressionStrategy' and 'huffmanOnlyCompressionStrategy'.
+--
+filteredStrategy :: CompressionStrategy
+filteredStrategy = Filtered
+
+-- | Use the Huffman-only compression strategy to force Huffman encoding only
+-- (no string match).
+--
+huffmanOnlyStrategy :: CompressionStrategy
+huffmanOnlyStrategy = HuffmanOnly
+
+
 fromCompressionStrategy :: CompressionStrategy -> CInt
 fromCompressionStrategy DefaultStrategy = #{const Z_DEFAULT_STRATEGY}
 fromCompressionStrategy Filtered        = #{const Z_FILTERED}
 fromCompressionStrategy HuffmanOnly     = #{const Z_HUFFMAN_ONLY}
 --fromCompressionStrategy RLE             = #{const Z_RLE}
 --fromCompressionStrategy Fixed           = #{const Z_FIXED}
+
 
 withStreamPtr :: (Ptr StreamState -> IO a) -> Stream a
 withStreamPtr f = do
@@ -627,7 +765,7 @@ inflateInit :: Format -> WindowBits -> Stream ()
 inflateInit format bits = do
   checkFormatSupported format
   err <- withStreamState $ \zstream ->
-    c_inflateInit2 zstream (fromIntegral (windowBits format bits))
+    c_inflateInit2 zstream (fromIntegral (fromWindowBits format bits))
   failIfError err
   getStreamState >>= unsafeLiftIO . addForeignPtrFinalizer c_inflateEnd
 
@@ -644,7 +782,7 @@ deflateInit format compLevel method bits memLevel strategy = do
     c_deflateInit2 zstream
                   (fromCompressionLevel compLevel)
                   (fromMethod method)
-                  (windowBits format bits)
+                  (fromWindowBits format bits)
                   (fromMemoryLevel memLevel)
                   (fromCompressionStrategy strategy)
   failIfError err
