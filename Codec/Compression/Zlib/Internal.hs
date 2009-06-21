@@ -81,12 +81,12 @@ import Codec.Compression.Zlib.Stream (Stream)
 -- chunks.
 --
 data CompressParams = CompressParams {
-  compressLevel       :: Stream.CompressionLevel,
-  compressMethod      :: Stream.Method,
-  compressWindowBits  :: Stream.WindowBits,
-  compressMemoryLevel :: Stream.MemoryLevel,
-  compressStrategy    :: Stream.CompressionStrategy,
-  compressBufferSize  :: Int
+  compressLevel       :: !Stream.CompressionLevel,
+  compressMethod      :: !Stream.Method,
+  compressWindowBits  :: !Stream.WindowBits,
+  compressMemoryLevel :: !Stream.MemoryLevel,
+  compressStrategy    :: !Stream.CompressionStrategy,
+  compressBufferSize  :: !Int
 }
 
 -- | The full set of parameters for decompression. The defaults are
@@ -109,8 +109,8 @@ data CompressParams = CompressParams {
 -- @'Data.ByteString.concat' . 'Data.ByteString.Lazy.toChunks'@.
 --
 data DecompressParams = DecompressParams {
-  decompressWindowBits :: Stream.WindowBits,
-  decompressBufferSize :: Int
+  decompressWindowBits :: !Stream.WindowBits,
+  decompressBufferSize :: !Int
 }
 
 -- | The default set of parameters for compression. This is typically used with
