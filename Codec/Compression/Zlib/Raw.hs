@@ -30,10 +30,25 @@ module Codec.Compression.Zlib.Raw (
 
   -- ** The compression parameter types
   CompressionLevel(..),
+    defaultCompression,
+    noCompression,
+    bestSpeed,
+    bestCompression,
+    compressionLevel,
   Method(..),
+    deflateMethod,
   WindowBits(..),
+    defaultWindowBits,
+    windowBits,
   MemoryLevel(..),
+    defaultMemoryLevel,
+    minMemoryLevel,
+    maxMemoryLevel,
+    memoryLevel,
   CompressionStrategy(..),
+    defaultStrategy,
+    filteredStrategy,
+    huffmanOnlyStrategy,
 
   ) where
 
@@ -43,13 +58,13 @@ import qualified Codec.Compression.Zlib.Internal as Internal
 import Codec.Compression.Zlib.Internal hiding (compress, decompress)
 
 decompress :: ByteString -> ByteString
-decompress = Internal.decompress Raw defaultDecompressParams
+decompress = Internal.decompress rawFormat defaultDecompressParams
 
 decompressWith :: DecompressParams -> ByteString -> ByteString
-decompressWith = Internal.decompress Raw
+decompressWith = Internal.decompress rawFormat
 
 compress :: ByteString -> ByteString
-compress = Internal.compress Raw defaultCompressParams
+compress = Internal.compress rawFormat defaultCompressParams
 
 compressWith :: CompressParams -> ByteString -> ByteString
-compressWith = Internal.compress Raw
+compressWith = Internal.compress rawFormat

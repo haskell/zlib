@@ -34,10 +34,25 @@ module Codec.Compression.Zlib (
 
   -- ** The compression parameter types
   CompressionLevel(..),
+    defaultCompression,
+    noCompression,
+    bestSpeed,
+    bestCompression,
+    compressionLevel,
   Method(..),
+    deflateMethod,
   WindowBits(..),
+    defaultWindowBits,
+    windowBits,
   MemoryLevel(..),
+    defaultMemoryLevel,
+    minMemoryLevel,
+    maxMemoryLevel,
+    memoryLevel,
   CompressionStrategy(..),
+    defaultStrategy,
+    filteredStrategy,
+    huffmanOnlyStrategy,
 
   ) where
 
@@ -65,7 +80,7 @@ import Codec.Compression.Zlib.Internal hiding (compress, decompress)
 -- stream before doing any IO action that depends on it.
 --
 decompress :: ByteString -> ByteString
-decompress = Internal.decompress Zlib defaultDecompressParams
+decompress = Internal.decompress zlibFormat defaultDecompressParams
 
 
 -- | Like 'decompress' but with the ability to specify various decompression
@@ -74,7 +89,7 @@ decompress = Internal.decompress Zlib defaultDecompressParams
 -- > decompressWith defaultCompressParams { ... }
 --
 decompressWith :: DecompressParams -> ByteString -> ByteString
-decompressWith = Internal.decompress Zlib
+decompressWith = Internal.decompress zlibFormat
 
 
 -- | Compress a stream of data into the zlib format.
@@ -87,7 +102,7 @@ decompressWith = Internal.decompress Zlib
 -- parameters.
 --
 compress :: ByteString -> ByteString
-compress = Internal.compress Zlib defaultCompressParams
+compress = Internal.compress zlibFormat defaultCompressParams
 
 
 -- | Like 'compress' but with the ability to specify various compression
@@ -100,4 +115,4 @@ compress = Internal.compress Zlib defaultCompressParams
 -- > compressWith defaultCompressParams { compressLevel = BestCompression }
 --
 compressWith :: CompressParams -> ByteString -> ByteString
-compressWith = Internal.compress Zlib
+compressWith = Internal.compress zlibFormat

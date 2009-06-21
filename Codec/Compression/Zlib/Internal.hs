@@ -25,11 +25,30 @@ module Codec.Compression.Zlib.Internal (
 
   -- * The compression parameter types
   Stream.Format(..),
+    Stream.gzipFormat,
+    Stream.zlibFormat,
+    Stream.rawFormat,
+    Stream.gzipOrZlibFormat,
   Stream.CompressionLevel(..),
+    Stream.defaultCompression,
+    Stream.noCompression,
+    Stream.bestSpeed,
+    Stream.bestCompression,
+    Stream.compressionLevel,
   Stream.Method(..),
+    Stream.deflateMethod,
   Stream.WindowBits(..),
+    Stream.defaultWindowBits,
+    Stream.windowBits,
   Stream.MemoryLevel(..),
+    Stream.defaultMemoryLevel,
+    Stream.minMemoryLevel,
+    Stream.maxMemoryLevel,
+    Stream.memoryLevel,
   Stream.CompressionStrategy(..),
+    Stream.defaultStrategy,
+    Stream.filteredStrategy,
+    Stream.huffmanOnlyStrategy,
 
   -- * Low-level API to get explicit error reports
   decompressWithErrors,
@@ -99,11 +118,11 @@ data DecompressParams = DecompressParams {
 --
 defaultCompressParams :: CompressParams
 defaultCompressParams = CompressParams {
-  compressLevel       = Stream.DefaultCompression,
-  compressMethod      = Stream.Deflated,
-  compressWindowBits  = Stream.DefaultWindowBits,
-  compressMemoryLevel = Stream.DefaultMemoryLevel,
-  compressStrategy    = Stream.DefaultStrategy,
+  compressLevel       = Stream.defaultCompression,
+  compressMethod      = Stream.deflateMethod,
+  compressWindowBits  = Stream.defaultWindowBits,
+  compressMemoryLevel = Stream.defaultMemoryLevel,
+  compressStrategy    = Stream.defaultStrategy,
   compressBufferSize  = defaultCompressBufferSize
 }
 
@@ -112,7 +131,7 @@ defaultCompressParams = CompressParams {
 --
 defaultDecompressParams :: DecompressParams
 defaultDecompressParams = DecompressParams {
-  decompressWindowBits = Stream.DefaultWindowBits,
+  decompressWindowBits = Stream.defaultWindowBits,
   decompressBufferSize = defaultDecompressBufferSize
 }
 
