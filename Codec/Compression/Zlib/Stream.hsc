@@ -70,10 +70,12 @@ module Codec.Compression.Zlib.Stream (
   outputBufferSpaceRemaining,
   outputBufferFull,
 
+#ifdef DEBUG
   -- * Debugging
   consistencyCheck,
   dump,
   trace,
+#endif
 
   ) where
 
@@ -90,9 +92,11 @@ import Data.ByteString.Base (nullForeignPtr)
 import Data.ByteString.Internal (nullForeignPtr)
 #endif
 import System.IO.Unsafe (unsafeInterleaveIO)
-import System.IO (hPutStrLn, stderr)
 import Control.Monad (liftM)
 import Control.Exception (assert)
+#ifdef DEBUG
+import System.IO (hPutStrLn, stderr)
+#endif
 
 import Prelude hiding (length)
 
@@ -181,7 +185,7 @@ outputBufferSpaceRemaining = getOutFree
 -- you only need to supply a new buffer when there is no more output buffer
 -- space remaining
 outputBufferFull :: Stream Bool
-outputBufferFull = getOutFree >>= return . (==0)
+outputBufferFull = liftM (==0) outputBufferSpaceRemaining
 
 
 -- you can only run this when the output buffer is not empty
@@ -345,6 +349,7 @@ setOutAvail outLength = Z $ \_stream inBuf outBuf outOffset _ -> do
 -- Debug stuff
 --
 
+#ifdef DEBUG
 trace :: String -> Stream ()
 trace = unsafeLiftIO . hPutStrLn stderr
 
@@ -382,6 +387,7 @@ consistencyCheck = do
   let outBufPtr = unsafeForeignPtrToPtr outBuf
 
   assert (outBufPtr `plusPtr` (outOffset + outAvail) == outNext) $ return ()
+#endif
 
 
 ----------------------------
@@ -744,8 +750,10 @@ getInAvail = liftM (fromIntegral :: CUInt -> Int) $
 setInNext :: Ptr Word8 -> Stream ()
 setInNext val = withStreamPtr (\ptr -> #{poke z_stream, next_in} ptr val)
 
+#ifdef DEBUG
 getInNext :: Stream (Ptr Word8)
 getInNext = withStreamPtr (#{peek z_stream, next_in})
+#endif
 
 setOutFree :: Int -> Stream ()
 setOutFree val = withStreamPtr $ \ptr ->
@@ -758,8 +766,10 @@ getOutFree = liftM (fromIntegral :: CUInt -> Int) $
 setOutNext  :: Ptr Word8 -> Stream ()
 setOutNext val = withStreamPtr (\ptr -> #{poke z_stream, next_out} ptr val)
 
+#ifdef DEBUG
 getOutNext :: Stream (Ptr Word8)
 getOutNext = withStreamPtr (#{peek z_stream, next_out})
+#endif
 
 inflateInit :: Format -> WindowBits -> Stream ()
 inflateInit format bits = do

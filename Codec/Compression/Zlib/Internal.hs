@@ -233,7 +233,9 @@ compress format
               -> [S.ByteString]
               -> Stream [S.ByteString]
   fillBuffers outChunkSize inChunks = do
+#ifdef DEBUG
     Stream.consistencyCheck
+#endif
 
     -- in this state there are two possabilities:
     --   * no outbut buffer space is available
@@ -347,6 +349,9 @@ decompressWithErrors format (DecompressParams bits initChunkSize) input =
               -> [S.ByteString]
               -> Stream DecompressStream
   fillBuffers outChunkSize inChunks = do
+#ifdef DEBUG
+    Stream.consistencyCheck
+#endif
 
     -- in this state there are two possabilities:
     --   * no outbut buffer space is available
