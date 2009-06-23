@@ -140,7 +140,7 @@ test_custom_dict =
 
 test_trailing_data :: Assertion
 test_trailing_data =
-  assertSampleData "data/two-files.gz" gzipFormat $ \decomp -> do
+  assertSampleData "data/two-files.gzip" gzipFormat $ \decomp -> do
     assertDecompressOk decomp
     case decomp of
       StreamChunk chunk StreamEnd -> chunk @?= BS.Char8.pack "Test 1"
