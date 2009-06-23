@@ -23,7 +23,6 @@ import Data.Word
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString      as BS
 import qualified Data.ByteString.Char8 as BS.Char8
-import System.IO.Error hiding (catch)
 import Prelude hiding (catch)
 
 
@@ -144,6 +143,7 @@ test_trailing_data =
     assertDecompressOk decomp
     case decomp of
       StreamChunk chunk StreamEnd -> chunk @?= BS.Char8.pack "Test 1"
+      _                           -> assertFailure "expected single chunk"
 
 test_small_chunks :: Assertion
 test_small_chunks = do
