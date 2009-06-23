@@ -1,3 +1,5 @@
+{-# LANGUAGE StandaloneDeriving #-}
+
 module Main where
 
 import Codec.Compression.Zlib.Internal
@@ -6,8 +8,10 @@ import Test.Codec.Compression.Zlib.Internal
 import Test.Codec.Compression.Zlib.Stream
 
 import Test.QuickCheck
+import Test.HUnit
 import Test.Framework
 import Test.Framework.Providers.QuickCheck2
+import Test.Framework.Providers.HUnit
 
 import Control.Monad
 import Data.Word
@@ -17,10 +21,18 @@ import qualified Data.ByteString      as BS
 
 main :: IO ()
 main = defaultMain [
-    testProperty "decompress . compress = id (standard)"           prop_decompress_after_compress,
-    testProperty "decompress . compress = id (Zlib -> GZipOrZLib)" prop_gziporzlib1,
-    testProperty "decompress . compress = id (GZip -> GZipOrZlib)" prop_gziporzlib2,
-    testProperty "prefixes of valid stream detected as truncated"  prop_truncated
+    testGroup "Main property tests" [
+      testProperty "decompress . compress = id (standard)"           prop_decompress_after_compress,
+      testProperty "decompress . compress = id (Zlib -> GZipOrZLib)" prop_gziporzlib1,
+      testProperty "decompress . compress = id (GZip -> GZipOrZlib)" prop_gziporzlib2,
+      testProperty "prefixes of valid stream detected as truncated"  prop_truncated
+    ],
+    testGroup "Special unit tests" [
+      testCase "simple gzip case"          test_simple_gzip,
+      testCase "detect bad crc"            test_bad_crc,
+      testCase "detect non-gzip"           test_non_gzip,
+      testCase "detect custom dictionary"  test_custom_dict
+    ]
   ]
 
 
@@ -74,6 +86,48 @@ prop_truncated w =
     shortStrings = sized $ \sz -> resize (sz `div` 6) arbitrary
 
 
+test_simple_gzip :: Assertion 
+test_simple_gzip =
+  assertSampleData "data/hello.gz" gzipFormat $ \decomp ->
+    assertDecompressOk decomp
+
+test_bad_crc :: Assertion
+test_bad_crc =
+  assertSampleData "data/bad-crc.gz" gzipFormat $ \decomp -> do
+    (code, msg) <- assertDecompressError decomp
+    code @?= DataError
+    msg  @?= "incorrect data check"
+
+test_non_gzip :: Assertion
+test_non_gzip = do
+  assertSampleData "data/not-gzip" gzipFormat $ \decomp -> do
+    (code, msg) <- assertDecompressError decomp
+    code @?= DataError
+    msg  @?= "incorrect header check"
+
+  assertSampleData "data/not-gzip" zlibFormat $ \decomp -> do
+    (code, msg) <- assertDecompressError decomp
+    code @?= DataError
+    msg  @?= "incorrect header check"
+
+  assertSampleData "data/not-gzip" rawFormat $ \decomp -> do
+    (code, msg) <- assertDecompressError decomp
+    code @?= DataError
+    msg  @?= "invalid code lengths set"
+
+  assertSampleData "data/not-gzip" gzipOrZlibFormat $ \decomp -> do
+    (code, msg) <- assertDecompressError decomp
+    code @?= DataError
+    msg  @?= "incorrect header check"
+
+test_custom_dict :: Assertion
+test_custom_dict =
+  assertSampleData "data/custom-dict.zlib" zlibFormat $ \decomp -> do
+    (code, msg) <- assertDecompressError decomp
+    code @?= DictionaryRequired
+    msg  @?= "custom dictionary needed"
+
+
 -------------------
 -- QuickCheck Utils
 
@@ -96,3 +150,30 @@ instance Arbitrary BL.ByteString where
 instance Arbitrary BS.ByteString where
   arbitrary = sized $ \sz -> resize (strSize sz) $ fmap BS.pack $ listOf $ arbitrary
   shrink = map BS.pack . shrink . BS.unpack
+
+
+--------------
+-- HUnit Utils
+
+assertSampleData :: FilePath -> Format -> (DecompressStream -> Assertion) -> Assertion
+assertSampleData file format assertion = do
+  compressedFile <- BL.readFile file
+  let decomp = decompressWithErrors format defaultDecompressParams compressedFile
+  assertion decomp
+
+expected :: String -> String -> Assertion
+expected e g = assertFailure ("expected: " ++ e ++ "\nbut got: " ++ g)
+
+assertDecompressOk :: DecompressStream -> Assertion
+assertDecompressOk StreamEnd              = return ()
+assertDecompressOk (StreamChunk _ s)      = assertDecompressOk s
+assertDecompressOk (StreamError code msg) = expected "decompress ok"
+                                                     (show code ++ ": " ++ msg)
+
+assertDecompressError :: DecompressStream -> IO (DecompressError, String)
+assertDecompressError StreamEnd              = expected "StreamError" "StreamEnd" >> fail ""
+assertDecompressError (StreamChunk _ s)      = assertDecompressError s
+assertDecompressError (StreamError code msg) = return (code, msg)
+
+deriving instance Show DecompressError
+deriving instance Eq DecompressError
