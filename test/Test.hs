@@ -18,7 +18,8 @@ main :: IO ()
 main = defaultMain [
     testProperty "decompress . compress = id (standard)"           prop_decompress_after_compress,
     testProperty "decompress . compress = id (Zlib -> GZipOrZLib)" prop_gziporzlib1,
-    testProperty "decompress . compress = id (GZip -> GZipOrZlib)" prop_gziporzlib2
+    testProperty "decompress . compress = id (GZip -> GZipOrZlib)" prop_gziporzlib2,
+    testProperty "prefixes of valid stream detected as truncated"  prop_truncated
   ]
 
 
@@ -51,6 +52,25 @@ prop_gziporzlib2 :: CompressParams
 prop_gziporzlib2 cp dp =
    decompressBufferSize dp > 0 && compressBufferSize cp > 0 ==>
    liftM2 (==) (decompress gzipOrZlibFormat dp . compress gzipFormat cp) id
+
+
+prop_truncated :: Format
+               -> Property
+prop_truncated w =
+   forAll shortStrings $ \bs ->
+     all (truncated . decomp)
+         (init (BL.inits (comp bs)))
+  -- All the initial prefixes of a valid compressed stream should be detected
+  -- as truncated.
+  where
+    comp   = compress w defaultCompressParams
+    decomp = decompressWithErrors w defaultDecompressParams
+    truncated (StreamError TruncatedInput
+                 "premature end of compressed stream") = True
+    truncated (StreamChunk _ s)                        = truncated s
+    truncated _                                        = False
+
+    shortStrings = sized $ \sz -> resize (sz `div` 6) arbitrary
 
 
 -------------------
