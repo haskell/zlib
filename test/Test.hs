@@ -4,6 +4,9 @@
 module Main where
 
 import Codec.Compression.Zlib.Internal
+import qualified Codec.Compression.Zlib     as Zlib
+import qualified Codec.Compression.GZip     as GZip
+import qualified Codec.Compression.Zlib.Raw as Raw
 
 import Test.Codec.Compression.Zlib.Internal ()
 import Test.Codec.Compression.Zlib.Stream ()
@@ -15,9 +18,13 @@ import Test.Framework.Providers.QuickCheck2
 import Test.Framework.Providers.HUnit
 
 import Control.Monad
+import Control.Exception
 import Data.Word
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString      as BS
+import qualified Data.ByteString.Char8 as BS.Char8
+import System.IO.Error hiding (catch)
+import Prelude hiding (catch)
 
 
 main :: IO ()
@@ -32,7 +39,10 @@ main = defaultMain [
       testCase "simple gzip case"          test_simple_gzip,
       testCase "detect bad crc"            test_bad_crc,
       testCase "detect non-gzip"           test_non_gzip,
-      testCase "detect custom dictionary"  test_custom_dict
+      testCase "detect custom dictionary"  test_custom_dict,
+      testCase "handle trailing data"      test_trailing_data,
+      testCase "check small input chunks"  test_small_chunks,
+      testCase "check exception raised"    test_exception
     ]
   ]
 
@@ -87,7 +97,7 @@ prop_truncated w =
     shortStrings = sized $ \sz -> resize (sz `div` 6) arbitrary
 
 
-test_simple_gzip :: Assertion 
+test_simple_gzip :: Assertion
 test_simple_gzip =
   assertSampleData "data/hello.gz" gzipFormat $ \decomp ->
     assertDecompressOk decomp
@@ -128,6 +138,41 @@ test_custom_dict =
     code @?= DictionaryRequired
     msg  @?= "custom dictionary needed"
 
+test_trailing_data :: Assertion
+test_trailing_data =
+  assertSampleData "data/two-files.gz" gzipFormat $ \decomp -> do
+    assertDecompressOk decomp
+    case decomp of
+      StreamChunk chunk StreamEnd -> chunk @?= BS.Char8.pack "Test 1"
+
+test_small_chunks :: Assertion
+test_small_chunks = do
+  uncompressedFile <- BL.readFile "data/not-gzip"
+  GZip.compress (smallChunks uncompressedFile) @?= GZip.compress uncompressedFile
+  Zlib.compress (smallChunks uncompressedFile) @?= Zlib.compress uncompressedFile
+  Raw.compress  (smallChunks uncompressedFile) @?= Raw.compress uncompressedFile
+
+  GZip.decompress (smallChunks (GZip.compress uncompressedFile)) @?= uncompressedFile
+  Zlib.decompress (smallChunks (Zlib.compress uncompressedFile)) @?= uncompressedFile
+  Raw.decompress  (smallChunks (Raw.compress  uncompressedFile)) @?= uncompressedFile
+
+  compressedFile   <- BL.readFile "data/hello.gz"
+  (GZip.decompress . smallChunks) compressedFile @?= GZip.decompress compressedFile
+
+  where
+    smallChunks :: BL.ByteString -> BL.ByteString
+    smallChunks = BL.fromChunks . map (\c -> BS.pack [c]) . BL.unpack
+
+test_exception :: Assertion
+test_exception =
+ (do
+    compressedFile <- BL.readFile "data/bad-crc.gz"
+    evaluate (BL.length (GZip.decompress compressedFile))
+    assertFailure "expected exception")
+
+  `catch` \(ErrorCall message) ->
+      message @?= "Codec.Compression.Zlib: incorrect data check"
+
 
 -------------------
 -- QuickCheck Utils
@@ -137,7 +182,7 @@ instance Arbitrary Word8 where
   shrink = map fromInteger . shrink . toInteger
 
 maxStrSize :: Double
-maxStrSize = 10000
+maxStrSize = 5000
 
 -- convert a QC size parameter into one for generating long lists,
 -- growing inverse exponentially up to maxStrSize
