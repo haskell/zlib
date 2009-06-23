@@ -25,7 +25,7 @@ hs%: ../examples/%.hs
 $(HSBINS) : ../Codec/Compression/Zlib/Stream.hs
 
 test-hs: Test.hs
-	$(HSC) $(HSC_OPTS) -lz -i. -i.. -o $@ --make $<
+	$(HSC) $(HSC_OPTS) -Wall -lz -i. -i.. -o $@ --make $<
 
 zpipe: zpipe.c
 	$(CC) -lz -o zpipe zpipe.c

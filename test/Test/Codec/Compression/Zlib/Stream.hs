@@ -1,4 +1,5 @@
 {-# LANGUAGE StandaloneDeriving #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Test code and properties for "Codec.Compression.Zlib.Stream"
 --

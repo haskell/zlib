@@ -1,11 +1,12 @@
 {-# LANGUAGE StandaloneDeriving #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main where
 
 import Codec.Compression.Zlib.Internal
 
-import Test.Codec.Compression.Zlib.Internal
-import Test.Codec.Compression.Zlib.Stream
+import Test.Codec.Compression.Zlib.Internal ()
+import Test.Codec.Compression.Zlib.Stream ()
 
 import Test.QuickCheck
 import Test.HUnit

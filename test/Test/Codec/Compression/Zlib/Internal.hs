@@ -1,11 +1,12 @@
 {-# LANGUAGE StandaloneDeriving #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Test code and properties for "Codec.Compression.Zlib.Internal"
 --
 module Test.Codec.Compression.Zlib.Internal where
 
 import Codec.Compression.Zlib.Internal
-import Test.Codec.Compression.Zlib.Stream
+import Test.Codec.Compression.Zlib.Stream ()
 import Test.QuickCheck
 
 import Control.Monad (ap, msum)
