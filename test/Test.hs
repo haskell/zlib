@@ -12,6 +12,7 @@ import Test.Framework.Providers.QuickCheck2
 import Control.Monad
 import Data.Word
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString      as BS
 
 
 main :: IO ()
@@ -89,5 +90,9 @@ strSize :: Int -> Int
 strSize n = floor (maxStrSize * (1 - 2 ** (-fromIntegral n/100)))
 
 instance Arbitrary BL.ByteString where
-  arbitrary = sized $ \sz -> resize (strSize sz) $ fmap BL.pack $ listOf $ arbitrary
+  arbitrary = sized $ \sz -> fmap BL.fromChunks $ listOf $ resize (sz `div` 2) arbitrary
   shrink = map BL.pack . shrink . BL.unpack
+
+instance Arbitrary BS.ByteString where
+  arbitrary = sized $ \sz -> resize (strSize sz) $ fmap BS.pack $ listOf $ arbitrary
+  shrink = map BS.pack . shrink . BS.unpack
