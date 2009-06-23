@@ -28,7 +28,7 @@ instance Arbitrary BL.ByteString where
   shrink = map BL.pack . shrink . BL.unpack
 
 prop_decompress_after_compress w cp dp =
-   (w /= Zlib || decompressWindowBits dp >= compressWindowBits cp) &&
+   (w /= zlibFormat || decompressWindowBits dp >= compressWindowBits cp) &&
    -- Zlib decompression has been observed to fail with both compress and decompress
    -- window bits = 8. This seems to be contrary to the docs and to a quick reading
    -- of the zlib source code.
@@ -39,11 +39,11 @@ prop_decompress_after_compress w cp dp =
 prop_gziporzlib1 cp dp =
    decompressWindowBits dp > compressWindowBits cp &&
    decompressBufferSize dp > 0 && compressBufferSize cp > 0 ==>
-   liftM2 (==) (decompress GZipOrZlib dp . compress Zlib cp) id
+   liftM2 (==) (decompress gzipOrZlibFormat dp . compress zlibFormat cp) id
 
 prop_gziporzlib2 cp dp =
    decompressBufferSize dp > 0 && compressBufferSize cp > 0 ==>
-   liftM2 (==) (decompress GZipOrZlib dp . compress GZip cp) id
+   liftM2 (==) (decompress gzipOrZlibFormat dp . compress gzipFormat cp) id
 
 main = defaultMain [
          testProperty "decompress . compress = id (standard)" prop_decompress_after_compress,
