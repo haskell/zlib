@@ -4,25 +4,28 @@ CC=gcc # can also use $(HSC)
 UNCOMPRESSED=`find .. -type f`
 GZIPPED=`find .. -type f -name \*.gz`
 
+HSC_OPTS=-hide-package zlib -i
+
+HSBINS=hszpipe hsgzip hsgunzip test-hs
+BINS=$(HSBINS) zpipe
+
 ALL:
 
 clean:
-	rm -f hszpipe zpipe *.o *.hi
+	rm -f $(BINS) *.o *.hi
 
 bins: hszpipe zpipe hsgzip hsgunzip
 
-cabal-configure:
-	cd .. && cabal configure
+%.hs : %.hsc
+	hsc2hs --cc=$(HSC) --ld=$(HSC) --lflag=-lz -o $@ $<
 
-# TODO: need to handle the Stream.hsc -> Stream.hs conversion
-cabal-build: cabal-configure
-	cd .. && cabal build
+hs%: ../examples/%.hs
+	$(HSC) $(HSC_OPTS) -lz -i.. -o $@ --make $<
 
-hs%: ../examples/%.hs cabal-build
-	$(HSC) -lz -i../dist/build -i.. -o $@ --make $<
+$(HSBINS) : ../Codec/Compression/Zlib/Stream.hs
 
-test-hs: Test.hs cabal-build
-	$(HSC) -lz -i. -i../dist/build -i.. -o $@ --make -main-is Test.main $<
+test-hs: Test.hs
+	$(HSC) $(HSC_OPTS) -lz -i. -i.. -o $@ --make $<
 
 zpipe: zpipe.c
 	$(CC) -lz -o zpipe zpipe.c
