@@ -80,7 +80,7 @@ import Codec.Compression.Zlib.Internal hiding (compress, decompress)
 -- stream before doing any IO action that depends on it.
 --
 decompress :: ByteString -> ByteString
-decompress = Internal.decompress zlibFormat defaultDecompressParams
+decompress = decompressWith defaultDecompressParams
 
 
 -- | Like 'decompress' but with the ability to specify various decompression
@@ -102,7 +102,7 @@ decompressWith = Internal.decompress zlibFormat
 -- parameters.
 --
 compress :: ByteString -> ByteString
-compress = Internal.compress zlibFormat defaultCompressParams
+compress = compressWith defaultCompressParams
 
 
 -- | Like 'compress' but with the ability to specify various compression

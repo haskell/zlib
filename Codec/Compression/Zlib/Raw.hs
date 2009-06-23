@@ -58,13 +58,13 @@ import qualified Codec.Compression.Zlib.Internal as Internal
 import Codec.Compression.Zlib.Internal hiding (compress, decompress)
 
 decompress :: ByteString -> ByteString
-decompress = Internal.decompress rawFormat defaultDecompressParams
+decompress = decompressWith defaultDecompressParams
 
 decompressWith :: DecompressParams -> ByteString -> ByteString
 decompressWith = Internal.decompress rawFormat
 
 compress :: ByteString -> ByteString
-compress = Internal.compress rawFormat defaultCompressParams
+compress = compressWith defaultCompressParams
 
 compressWith :: CompressParams -> ByteString -> ByteString
 compressWith = Internal.compress rawFormat
