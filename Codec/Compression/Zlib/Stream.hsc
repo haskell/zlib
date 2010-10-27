@@ -82,8 +82,12 @@ module Codec.Compression.Zlib.Stream (
 import Foreign
          ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff, mallocBytes
          , ForeignPtr, FinalizerPtr, newForeignPtr_, addForeignPtrFinalizer
-	 , finalizeForeignPtr, withForeignPtr, touchForeignPtr
+	 , withForeignPtr, touchForeignPtr
 	 , unsafeForeignPtrToPtr, unsafePerformIO )
+#ifdef __GLASGOW_HASKELL__
+import Foreign
+         ( finalizeForeignPtr )
+#endif
 import Foreign.C
          ( CInt, CUInt, CChar, CString, withCAString, peekCAString )
 #ifdef BYTESTRING_IN_BASE
@@ -816,7 +820,12 @@ deflate_ flush = do
 -- longer be needed, for example if an error occurs or if the stream ends.
 --
 finalise :: Stream ()
+#ifdef __GLASGOW_HASKELL__
+--TODO: finalizeForeignPtr is ghc-only
 finalise = getStreamState >>= unsafeLiftIO . finalizeForeignPtr
+#else
+finalise = return ()
+#endif
 
 checkFormatSupported :: Format -> Stream ()
 checkFormatSupported format = do
