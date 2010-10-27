@@ -54,6 +54,8 @@ module Codec.Compression.Zlib.Internal (
   decompressWithErrors,
   DecompressStream(..),
   DecompressError(..),
+  foldDecompressStream,
+  fromDecompressStream,
   ) where
 
 import Prelude hiding (length)
@@ -181,7 +183,8 @@ data DecompressError =
    | DataError
 
 -- | Fold an 'DecompressionStream'. Just like 'foldr' but with an extra error
--- case. For example to convert to a list and translate the errors into exceptions:
+-- case. For example to convert to a list and translate the errors into
+-- exceptions:
 --
 -- > foldDecompressStream (:) [] (\code msg -> error msg)
 --
@@ -194,10 +197,18 @@ foldDecompressStream chunk end err = fold
     fold (StreamChunk bs stream) = chunk bs (fold stream)
     fold (StreamError code msg)  = err code msg
 
+-- | Convert a 'DecompressStream' to a lazy 'ByteString'. If any decompression
+-- errors are encountered then they are thrown as exceptions.
+--
+-- This is a special case of 'foldDecompressStream'.
+--
 fromDecompressStream :: DecompressStream -> L.ByteString
 fromDecompressStream =
   foldDecompressStream L.Chunk L.Empty
     (\_code msg -> error ("Codec.Compression.Zlib: " ++ msg))
+
+--TODO: throw DecompressError as an Exception class type and document that it
+-- does this.
 
 -- | Compress a data stream.
 --
