@@ -90,11 +90,7 @@ import Foreign
 #endif
 import Foreign.C
          ( CInt, CUInt, CChar, CString, withCAString, peekCAString )
-#ifdef BYTESTRING_IN_BASE
-import Data.ByteString.Base (nullForeignPtr)
-#else
 import Data.ByteString.Internal (nullForeignPtr)
-#endif
 import System.IO.Unsafe (unsafeInterleaveIO)
 import Control.Monad (liftM)
 import Control.Exception (assert)
