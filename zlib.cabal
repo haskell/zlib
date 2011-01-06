@@ -16,7 +16,6 @@ description:     This package provides a pure interface for compressing and
                  It provides a convenient high level API suitable for most
                  tasks and for the few cases where more control is needed it
                  provides access to the full zlib feature set.
-stability:       provisional
 build-type:      Simple
 cabal-version:   >= 1.2.1
 extra-source-files: cbits/crc32.h cbits/inffast.h cbits/inflate.h
