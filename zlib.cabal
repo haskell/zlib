@@ -3,8 +3,8 @@ version:         0.5.3.0
 copyright:       (c) 2006-2008 Duncan Coutts
 license:         BSD3
 license-file:    LICENSE
-author:          Duncan Coutts <duncan@haskell.org>
-maintainer:      Duncan Coutts <duncan@haskell.org>
+author:          Duncan Coutts <duncan@community.haskell.org>
+maintainer:      Duncan Coutts <duncan@community.haskell.org>
 category:        Codec
 synopsis:        Compression and decompression in the gzip and zlib formats
 description:     This package provides a pure interface for compressing and 
