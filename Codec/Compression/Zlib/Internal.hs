@@ -84,7 +84,8 @@ data CompressParams = CompressParams {
   compressWindowBits  :: !Stream.WindowBits,
   compressMemoryLevel :: !Stream.MemoryLevel,
   compressStrategy    :: !Stream.CompressionStrategy,
-  compressBufferSize  :: !Int
+  compressBufferSize  :: !Int,
+  compressDictionary  :: Maybe S.ByteString
 }
 
 -- | The full set of parameters for decompression. The defaults are
@@ -108,7 +109,8 @@ data CompressParams = CompressParams {
 --
 data DecompressParams = DecompressParams {
   decompressWindowBits :: !Stream.WindowBits,
-  decompressBufferSize :: !Int
+  decompressBufferSize :: !Int,
+  decompressDictionary :: Maybe S.ByteString
 }
 
 -- | The default set of parameters for compression. This is typically used with
@@ -121,7 +123,8 @@ defaultCompressParams = CompressParams {
   compressWindowBits  = Stream.defaultWindowBits,
   compressMemoryLevel = Stream.defaultMemoryLevel,
   compressStrategy    = Stream.defaultStrategy,
-  compressBufferSize  = defaultCompressBufferSize
+  compressBufferSize  = defaultCompressBufferSize,
+  compressDictionary  = Nothing
 }
 
 -- | The default set of parameters for decompression. This is typically used with
@@ -130,7 +133,8 @@ defaultCompressParams = CompressParams {
 defaultDecompressParams :: DecompressParams
 defaultDecompressParams = DecompressParams {
   decompressWindowBits = Stream.defaultWindowBits,
-  decompressBufferSize = defaultDecompressBufferSize
+  decompressBufferSize = defaultDecompressBufferSize,
+  decompressDictionary = Nothing
 }
 
 -- | The default chunk sizes for the output of compression and decompression
@@ -214,10 +218,14 @@ compress
   -> L.ByteString
   -> L.ByteString
 compress format
-  (CompressParams compLevel method bits memLevel strategy initChunkSize)
+  (CompressParams compLevel method bits memLevel strategy initChunkSize mdict)
   input =
   L.fromChunks $ Stream.run $ do
     Stream.deflateInit format compLevel method bits memLevel strategy
+    case mdict of
+      Just (S.PS dictFPtr offset length) ->
+        Stream.deflateSetDictionary dictFPtr offset length
+      Nothing -> return Stream.Ok
     case L.toChunks input of
       [] -> fillBuffers 20 [] --gzip header is 20 bytes, others even smaller
       S.PS inFPtr offset length : chunks -> do
@@ -300,7 +308,7 @@ compress format
 
       Stream.Error code msg -> case code of
         Stream.BufferError  -> fail "BufferError should be impossible!"
-        Stream.NeedDict     -> fail "NeedDict is impossible!"
+        Stream.NeedDict _   -> fail "NeedDict is impossible!"
         _                   -> fail msg
 
 
@@ -331,7 +339,7 @@ decompressWithErrors
   -> DecompressParams
   -> L.ByteString
   -> DecompressStream
-decompressWithErrors format (DecompressParams bits initChunkSize) input =
+decompressWithErrors format (DecompressParams bits initChunkSize mdict) input =
   Stream.run $ do
     Stream.inflateInit format bits
     case L.toChunks input of
@@ -406,9 +414,23 @@ decompressWithErrors format (DecompressParams bits initChunkSize) input =
       Stream.Error code msg -> case code of
         Stream.BufferError  -> finish (StreamError TruncatedInput msg')
           where msg' = "premature end of compressed stream"
-        Stream.NeedDict     -> finish (StreamError DictionaryRequired msg)
+        Stream.NeedDict adler -> do
+          case mdict of
+            Just dict -> do
+              status <- setDict dict adler
+              case status of
+                Stream.Ok -> drainBuffers inChunks
+                Stream.Error Stream.StreamError _ ->
+                  finish (StreamError DictionaryRequired "provided dictionary not valid")
+                Stream.Error Stream.DataError _   ->
+                  finish (StreamError DictionaryRequired "given dictionary doesn't match the expected one")
+                _ -> fail "error when setting the inflate dictionary. impossible?!"
+            Nothing -> finish (StreamError DictionaryRequired msg)
         Stream.DataError    -> finish (StreamError DataError msg)
         _                   -> fail msg
+
+  setDict (S.PS dictFPtr offset length) _adler = do
+    Stream.inflateSetDictionary dictFPtr offset length
 
   -- Note even if we end with an error we still try to flush the last chunk if
   -- there is one. The user just has to decide what they want to trust.

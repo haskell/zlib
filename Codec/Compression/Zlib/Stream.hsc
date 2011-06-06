@@ -70,6 +70,13 @@ module Codec.Compression.Zlib.Stream (
   outputBufferSpaceRemaining,
   outputBufferFull,
 
+  -- ** Dictionary
+  deflateSetDictionary,
+  inflateSetDictionary,
+
+  -- ** Adler
+  adler32,
+
 #ifdef DEBUG
   -- * Debugging
   consistencyCheck,
@@ -235,6 +242,25 @@ inflate flush = do
   setOutAvail (outAvail + outExtra)
   return result
 
+deflateSetDictionary :: ForeignPtr Word8 -> Int -> Int -> Stream Status
+deflateSetDictionary bytef offset length = do
+  err <- withStreamState $ \zstream -> do
+    c_deflateSetDictionary zstream
+                           (unsafeForeignPtrToPtr bytef `plusPtr` offset)
+                           (fromIntegral length)
+  toStatus err
+
+inflateSetDictionary :: ForeignPtr Word8 -> Int -> Int -> Stream Status
+inflateSetDictionary bytef offset length = do
+  err <- withStreamState $ \zstream -> do
+    c_inflateSetDictionary zstream
+                           (unsafeForeignPtrToPtr bytef `plusPtr` offset)
+                           (fromIntegral length)
+  toStatus err
+
+adler32 :: CULong -> ForeignPtr Word8 -> Int -> Int -> IO CULong
+adler32 adler fptr offset length = do
+  c_adler32 adler (unsafeForeignPtrToPtr fptr `plusPtr` offset) (fromIntegral length)
 
 ----------------------------
 -- Stream monad
@@ -404,7 +430,7 @@ data Status =
   | Error ErrorCode String
 
 data ErrorCode =
-    NeedDict
+    NeedDict CULong
   | FileError
   | StreamError
   | DataError
@@ -420,7 +446,9 @@ toStatus :: CInt -> Stream Status
 toStatus errno = case errno of
   (#{const Z_OK})            -> return Ok
   (#{const Z_STREAM_END})    -> return StreamEnd
-  (#{const Z_NEED_DICT})     -> err NeedDict     "custom dictionary needed"
+  (#{const Z_NEED_DICT})     -> do
+    adler <- withStreamPtr (#{peek z_stream, adler})
+    err (NeedDict adler)   "custom dictionary needed"
   (#{const Z_BUF_ERROR})     -> err BufferError  "buffer error"
   (#{const Z_ERRNO})         -> err FileError    "file error"
   (#{const Z_STREAM_ERROR})  -> err StreamError  "stream error"
@@ -885,6 +913,18 @@ c_deflateInit2 z a b c d e =
   withCAString #{const_str ZLIB_VERSION} $ \versionStr ->
     c_deflateInit2_ z a b c d e versionStr (#{const sizeof(z_stream)} :: CInt)
 
+foreign import ccall unsafe "zlib.h deflateSetDictionary"
+  c_deflateSetDictionary :: StreamState
+                         -> Ptr Word8
+                         -> CUInt
+                         -> IO CInt
+
+foreign import ccall unsafe "zlib.h inflateSetDictionary"
+  c_inflateSetDictionary :: StreamState
+                         -> Ptr Word8
+                         -> CUInt
+                         -> IO CInt
+
 foreign import ccall unsafe "zlib.h deflate"
   c_deflate :: StreamState -> CInt -> IO CInt
 
@@ -893,3 +933,9 @@ foreign import ccall unsafe "zlib.h &deflateEnd"
 
 foreign import ccall unsafe "zlib.h zlibVersion"
   c_zlibVersion :: IO CString
+
+foreign import ccall unsafe "zlib.h adler32"
+  c_adler32 :: CULong
+            -> Ptr Word8
+            -> CUInt
+            -> IO CULong
