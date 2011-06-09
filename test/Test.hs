@@ -39,6 +39,8 @@ main = defaultMain [
       testCase "detect bad crc"            test_bad_crc,
       testCase "detect non-gzip"           test_non_gzip,
       testCase "detect custom dictionary"  test_custom_dict,
+      testCase "dectect inflate with wrong dict"   test_wrong_dictionary,
+      testCase "dectect inflate with right dict"   test_right_dictionary,
       testCase "handle trailing data"      test_trailing_data,
       testCase "check small input chunks"  test_small_chunks,
       testCase "check exception raised"    test_exception
@@ -136,6 +138,34 @@ test_custom_dict =
     (code, msg) <- assertDecompressError decomp
     code @?= DictionaryRequired
     msg  @?= "custom dictionary needed"
+
+test_wrong_dictionary :: Assertion
+test_wrong_dictionary = do
+  compressedFile <- BL.readFile "data/custom-dict.zlib"
+  let decomp = decompressWithErrors zlibFormat
+                                    defaultDecompressParams
+                                                             -- wrong dict!
+                                      { decompressDictionary = Just (BS.pack [65,66,67]) }
+                                    compressedFile
+  check decomp
+
+  where
+  check (StreamEnd ) = assertFailure "expected to have required a dictionary"
+  check (StreamChunk _ n) = check n
+  check (StreamError code msg) = do
+    code @?= DictionaryRequired
+    msg @?= "given dictionary doesn't match the expected one"
+
+test_right_dictionary :: Assertion
+test_right_dictionary = do
+  compressedFile <- BL.readFile "data/custom-dict.zlib"
+  dict <- BS.readFile "data/custom-dict.zlib-dict"
+  let decomp = decompressWithErrors zlibFormat
+                                    defaultDecompressParams
+                                      { decompressDictionary = Just dict }
+                                    compressedFile
+  assertDecompressOk decomp
+
 
 test_trailing_data :: Assertion
 test_trailing_data =

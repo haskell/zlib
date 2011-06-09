@@ -18,6 +18,7 @@ instance Arbitrary CompressParams where
   arbitrary = return CompressParams `ap` arbitrary `ap` arbitrary
                                     `ap` arbitrary `ap` arbitrary
                                     `ap` arbitrary `ap` arbitraryBufferSize
+                                    `ap` return Nothing
 
   -- this definition (and the equivalent in DecompressParams below) could be
   -- made nicer using Data.Accessor, but it's probably not worth the
@@ -47,7 +48,7 @@ arbitraryBufferSize = frequency $ [(10, return n) | n <- [1..1024]] ++
 deriving instance Show DecompressParams
 
 instance Arbitrary DecompressParams where
-  arbitrary = return DecompressParams `ap` arbitrary `ap` arbitraryBufferSize
+  arbitrary = return DecompressParams `ap` arbitrary `ap` arbitraryBufferSize `ap` return Nothing
   shrink dp = msum [
                 return (\wb -> dp { decompressWindowBits = wb }) `ap`
                       shrink (decompressWindowBits dp),
