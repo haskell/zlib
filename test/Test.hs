@@ -20,9 +20,9 @@ import Test.Framework.Providers.HUnit
 import Control.Monad
 import Control.Exception
 import Data.Word
+import qualified Data.ByteString.Char8 as BS.Char8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString      as BS
-import qualified Data.ByteString.Char8 as BS.Char8
 import Prelude hiding (catch)
 
 
