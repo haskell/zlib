@@ -203,13 +203,8 @@ test_exception =
   `catch` \(ErrorCall message) ->
       message @?= "Codec.Compression.Zlib: incorrect data check"
 
-
 -------------------
 -- QuickCheck Utils
-
-instance Arbitrary Word8 where
-  arbitrary = fmap fromInteger arbitrary
-  shrink = map fromInteger . shrink . toInteger
 
 maxStrSize :: Double
 maxStrSize = 5000
