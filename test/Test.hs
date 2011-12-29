@@ -16,6 +16,7 @@ import Test.HUnit
 import Test.Framework
 import Test.Framework.Providers.QuickCheck2
 import Test.Framework.Providers.HUnit
+import Utils
 
 import Control.Monad
 import Control.Exception
@@ -154,7 +155,7 @@ test_wrong_dictionary = do
   check (StreamChunk _ n) = check n
   check (StreamError code msg) = do
     code @?= DictionaryRequired
-    msg @?= "given dictionary doesn't match the expected one"
+    msg  @?= "given dictionary does not match the expected one"
 
 test_right_dictionary :: Assertion
 test_right_dictionary = do
@@ -202,25 +203,6 @@ test_exception =
 
   `catch` \(ErrorCall message) ->
       message @?= "Codec.Compression.Zlib: incorrect data check"
-
--------------------
--- QuickCheck Utils
-
-maxStrSize :: Double
-maxStrSize = 5000
-
--- convert a QC size parameter into one for generating long lists,
--- growing inverse exponentially up to maxStrSize
-strSize :: Int -> Int
-strSize n = floor (maxStrSize * (1 - 2 ** (-fromIntegral n/100)))
-
-instance Arbitrary BL.ByteString where
-  arbitrary = sized $ \sz -> fmap BL.fromChunks $ listOf $ resize (sz `div` 2) arbitrary
-  shrink = map BL.pack . shrink . BL.unpack
-
-instance Arbitrary BS.ByteString where
-  arbitrary = sized $ \sz -> resize (strSize sz) $ fmap BS.pack $ listOf $ arbitrary
-  shrink = map BS.pack . shrink . BS.unpack
 
 
 --------------

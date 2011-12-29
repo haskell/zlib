@@ -30,6 +30,7 @@ module Codec.Compression.Zlib.Stream (
     zlibFormat,
     rawFormat,
     gzipOrZlibFormat,
+    formatSupportsDictionary,
   CompressionLevel(..),
     defaultCompression,
     noCompression,
@@ -74,8 +75,10 @@ module Codec.Compression.Zlib.Stream (
   deflateSetDictionary,
   inflateSetDictionary,
 
-  -- ** Adler
-  adler32,
+  -- ** Dictionary hashes
+  DictionaryHash,
+  dictionaryHash,
+  zeroDictionaryHash,
 
 #ifdef DEBUG
   -- * Debugging
@@ -102,6 +105,8 @@ import Foreign
 #endif
 import Foreign.C
 import Data.ByteString.Internal (nullForeignPtr)
+import qualified Data.ByteString.Unsafe as B
+import Data.ByteString (ByteString)
 import System.IO.Unsafe (unsafeInterleaveIO)
 import Control.Monad (liftM)
 import Control.Exception (assert)
@@ -242,25 +247,46 @@ inflate flush = do
   setOutAvail (outAvail + outExtra)
   return result
 
-deflateSetDictionary :: ForeignPtr Word8 -> Int -> Int -> Stream Status
-deflateSetDictionary bytef offset length = do
-  err <- withStreamState $ \zstream -> do
-    c_deflateSetDictionary zstream
-                           (unsafeForeignPtrToPtr bytef `plusPtr` offset)
-                           (fromIntegral length)
+deflateSetDictionary :: ByteString -> Stream Status
+deflateSetDictionary dict = do
+  err <- withStreamState $ \zstream ->
+           B.unsafeUseAsCStringLen dict $ \(ptr, len) ->
+             c_deflateSetDictionary zstream ptr (fromIntegral len)
   toStatus err
 
-inflateSetDictionary :: ForeignPtr Word8 -> Int -> Int -> Stream Status
-inflateSetDictionary bytef offset length = do
+inflateSetDictionary :: ByteString -> Stream Status
+inflateSetDictionary dict = do
   err <- withStreamState $ \zstream -> do
-    c_inflateSetDictionary zstream
-                           (unsafeForeignPtrToPtr bytef `plusPtr` offset)
-                           (fromIntegral length)
+           B.unsafeUseAsCStringLen dict $ \(ptr, len) ->
+             c_inflateSetDictionary zstream ptr (fromIntegral len)
   toStatus err
 
-adler32 :: CULong -> ForeignPtr Word8 -> Int -> Int -> IO CULong
-adler32 adler fptr offset length = do
-  c_adler32 adler (unsafeForeignPtrToPtr fptr `plusPtr` offset) (fromIntegral length)
+-- | A hash of a custom compression dictionary. These hashes are used by
+-- zlib as dictionary identifiers.
+-- (The particular hash function used is Adler32.)
+--
+newtype DictionaryHash = DictHash CULong
+  deriving (Eq, Ord, Read, Show)
+
+-- | Update a running 'DictionaryHash'. You can generate a 'DictionaryHash'
+-- from one or more 'ByteString's by starting from 'zeroDictionaryHash', e.g.
+--
+-- > dictionaryHash zeroDictionaryHash :: ByteString -> DictionaryHash
+--
+-- or
+--
+-- > foldl' dictionaryHash zeroDictionaryHash :: [ByteString] -> DictionaryHash
+--
+dictionaryHash :: DictionaryHash -> ByteString -> DictionaryHash
+dictionaryHash (DictHash adler) dict =
+  unsafePerformIO $
+    B.unsafeUseAsCStringLen dict $ \(ptr, len) ->
+      liftM DictHash $ c_adler32 adler ptr (fromIntegral len)
+
+-- | A zero 'DictionaryHash' to use as the initial value with 'dictionaryHash'.
+--
+zeroDictionaryHash :: DictionaryHash
+zeroDictionaryHash = DictHash 0
 
 ----------------------------
 -- Stream monad
@@ -430,7 +456,7 @@ data Status =
   | Error ErrorCode String
 
 data ErrorCode =
-    NeedDict CULong
+    NeedDict DictionaryHash
   | FileError
   | StreamError
   | DataError
@@ -448,7 +474,7 @@ toStatus errno = case errno of
   (#{const Z_STREAM_END})    -> return StreamEnd
   (#{const Z_NEED_DICT})     -> do
     adler <- withStreamPtr (#{peek z_stream, adler})
-    err (NeedDict adler)   "custom dictionary needed"
+    err (NeedDict (DictHash adler))  "custom dictionary needed"
   (#{const Z_BUF_ERROR})     -> err BufferError  "buffer error"
   (#{const Z_ERRNO})         -> err FileError    "file error"
   (#{const Z_STREAM_ERROR})  -> err StreamError  "stream error"
@@ -526,6 +552,10 @@ rawFormat = Raw
 gzipOrZlibFormat :: Format
 gzipOrZlibFormat = GZipOrZlib
 
+formatSupportsDictionary :: Format -> Bool
+formatSupportsDictionary Zlib = True
+formatSupportsDictionary Raw  = True
+formatSupportsDictionary _    = False
 
 -- | The compression method
 --
@@ -915,13 +945,13 @@ c_deflateInit2 z a b c d e =
 
 foreign import ccall unsafe "zlib.h deflateSetDictionary"
   c_deflateSetDictionary :: StreamState
-                         -> Ptr Word8
+                         -> Ptr CChar
                          -> CUInt
                          -> IO CInt
 
 foreign import ccall unsafe "zlib.h inflateSetDictionary"
   c_inflateSetDictionary :: StreamState
-                         -> Ptr Word8
+                         -> Ptr CChar
                          -> CUInt
                          -> IO CInt
 
@@ -936,6 +966,6 @@ foreign import ccall unsafe "zlib.h zlibVersion"
 
 foreign import ccall unsafe "zlib.h adler32"
   c_adler32 :: CULong
-            -> Ptr Word8
+            -> Ptr CChar
             -> CUInt
             -> IO CULong

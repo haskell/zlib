@@ -166,8 +166,8 @@ data DecompressError =
      -- | It is possible to do zlib compression with a custom dictionary. This
      -- allows slightly higher compression ratios for short files. However such
      -- compressed streams require the same dictionary when decompressing. This
-     -- zlib binding does not currently support custom dictionaries. This error
-     -- is for when we encounter a compressed stream that needs a dictionary.
+     -- error is for when we encounter a compressed stream that needs a
+     -- dictionary, and it's not provided.
    | DictionaryRequired
 
      -- | If the compressed data stream is corrupted in any way then you will
@@ -222,15 +222,13 @@ compress format
   input =
   L.fromChunks $ Stream.run $ do
     Stream.deflateInit format compLevel method bits memLevel strategy
-    case mdict of
-      Just (S.PS dictFPtr offset length) ->
-        Stream.deflateSetDictionary dictFPtr offset length
-      Nothing -> return Stream.Ok
+    setDictionary mdict
     case L.toChunks input of
       [] -> fillBuffers 20 [] --gzip header is 20 bytes, others even smaller
       S.PS inFPtr offset length : chunks -> do
         Stream.pushInputBuffer inFPtr offset length
-        fillBuffers initChunkSize chunks
+        r <- fillBuffers initChunkSize chunks
+        return r
 
   where
     -- we flick between two states:
@@ -310,6 +308,18 @@ compress format
         Stream.BufferError  -> fail "BufferError should be impossible!"
         Stream.NeedDict _   -> fail "NeedDict is impossible!"
         _                   -> fail msg
+
+  -- Set the custom dictionary, if we were provided with one
+  -- and if the format supports it (zlib and raw, not gzip).
+  setDictionary :: Maybe S.ByteString -> Stream ()
+  setDictionary (Just dict)
+    | Stream.formatSupportsDictionary format = do
+        status <- Stream.deflateSetDictionary dict
+        case status of
+          Stream.Ok          -> return ()
+          Stream.Error _ msg -> fail msg
+          _                  -> fail "error when setting deflate dictionary"
+  setDictionary _ = return ()
 
 
 -- | Decompress a data stream.
@@ -415,22 +425,12 @@ decompressWithErrors format (DecompressParams bits initChunkSize mdict) input =
         Stream.BufferError  -> finish (StreamError TruncatedInput msg')
           where msg' = "premature end of compressed stream"
         Stream.NeedDict adler -> do
-          case mdict of
-            Just dict -> do
-              status <- setDict dict adler
-              case status of
-                Stream.Ok -> drainBuffers inChunks
-                Stream.Error Stream.StreamError _ ->
-                  finish (StreamError DictionaryRequired "provided dictionary not valid")
-                Stream.Error Stream.DataError _   ->
-                  finish (StreamError DictionaryRequired "given dictionary doesn't match the expected one")
-                _ -> fail "error when setting the inflate dictionary. impossible?!"
-            Nothing -> finish (StreamError DictionaryRequired msg)
+          err <- setDictionary adler mdict
+          case err of
+            Just streamErr  -> finish streamErr
+            Nothing         -> drainBuffers inChunks
         Stream.DataError    -> finish (StreamError DataError msg)
         _                   -> fail msg
-
-  setDict (S.PS dictFPtr offset length) _adler = do
-    Stream.inflateSetDictionary dictFPtr offset length
 
   -- Note even if we end with an error we still try to flush the last chunk if
   -- there is one. The user just has to decide what they want to trust.
@@ -445,3 +445,17 @@ decompressWithErrors format (DecompressParams bits initChunkSize mdict) input =
               return (StreamChunk (S.PS outFPtr offset length) end)
       else do Stream.finalise
               return end
+
+  setDictionary :: Stream.DictionaryHash -> Maybe S.ByteString
+                -> Stream (Maybe DecompressStream)
+  setDictionary _adler Nothing =
+    return $ Just (StreamError DictionaryRequired "custom dictionary needed")
+  setDictionary _adler (Just dict) = do
+    status <- Stream.inflateSetDictionary dict
+    case status of
+      Stream.Ok -> return Nothing
+      Stream.Error Stream.StreamError _ ->
+        return $ Just (StreamError DictionaryRequired "provided dictionary not valid")
+      Stream.Error Stream.DataError _   ->
+        return $ Just (StreamError DictionaryRequired "given dictionary does not match the expected one")
+      _ -> fail "error when setting inflate dictionary"
