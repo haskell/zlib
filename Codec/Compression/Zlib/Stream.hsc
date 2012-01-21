@@ -82,14 +82,18 @@ module Codec.Compression.Zlib.Stream (
 import Foreign
          ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff, mallocBytes
          , ForeignPtr, FinalizerPtr, newForeignPtr_, addForeignPtrFinalizer
-	 , withForeignPtr, touchForeignPtr
-	 , unsafeForeignPtrToPtr, unsafePerformIO )
+         , withForeignPtr, touchForeignPtr )
+#if MIN_VERSION_base(4,5,0)
+import Foreign.ForeignPtr.Unsafe ( unsafeForeignPtrToPtr )
+import System.IO.Unsafe          ( unsafePerformIO )
+#else
+import Foreign ( unsafeForeignPtrToPtr, unsafePerformIO )
+#endif
 #ifdef __GLASGOW_HASKELL__
 import Foreign
          ( finalizeForeignPtr )
 #endif
 import Foreign.C
-         ( CInt, CUInt, CChar, CString, withCAString, peekCAString )
 import Data.ByteString.Internal (nullForeignPtr)
 import System.IO.Unsafe (unsafeInterleaveIO)
 import Control.Monad (liftM)
