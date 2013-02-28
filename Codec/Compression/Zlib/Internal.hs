@@ -420,7 +420,15 @@ decompressWithErrors format (DecompressParams bits initChunkSize mdict) input =
                   return $ StreamChunk (S.PS outFPtr offset length) outChunks
           else do fillBuffers defaultDecompressBufferSize inChunks
 
-      Stream.StreamEnd      -> finish StreamEnd
+      Stream.StreamEnd      -> inChunks `seq` finish StreamEnd
+        -- The decompressor tells us we're done, but that doesn't mean we have
+        -- consumed all the input (there could be trailing data). But more
+        -- subtle than that, the decompressor will actually never demand the
+        -- tail of the input (in the usual case where it's empty) because
+        -- the zlib and gzip formats know their own length. So we force the
+        -- tail of the input here because this can be important for closing
+        -- file handles etc.
+
       Stream.Error code msg -> case code of
         Stream.BufferError  -> finish (StreamError TruncatedInput msg')
           where msg' = "premature end of compressed stream"
