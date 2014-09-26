@@ -108,7 +108,8 @@ import Data.ByteString.Internal (nullForeignPtr)
 import qualified Data.ByteString.Unsafe as B
 import Data.ByteString (ByteString)
 import System.IO.Unsafe (unsafeInterleaveIO)
-import Control.Monad (liftM)
+import Control.Applicative (Applicative(..))
+import Control.Monad (ap,liftM)
 import Control.Exception (assert)
 #ifdef DEBUG
 import System.IO (hPutStrLn, stderr)
@@ -301,6 +302,13 @@ newtype Stream a = Z {
               ,ForeignPtr Word8
               ,Int, Int, a)
   }
+
+instance Functor Stream where
+  fmap   = liftM
+
+instance Applicative Stream where
+  pure   = return
+  (<*>)  = ap
 
 instance Monad Stream where
   (>>=)  = thenZ
