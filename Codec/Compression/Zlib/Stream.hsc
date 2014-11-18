@@ -63,6 +63,7 @@ module Codec.Compression.Zlib.Stream (
   -- ** Input buffer
   pushInputBuffer,
   inputBufferEmpty,
+  remainingInputBuffer,
 
   -- ** Output buffer
   pushOutputBuffer,
@@ -92,7 +93,7 @@ module Codec.Compression.Zlib.Stream (
 import Foreign
          ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff, mallocBytes
          , ForeignPtr, FinalizerPtr, newForeignPtr_, addForeignPtrFinalizer
-         , withForeignPtr, touchForeignPtr )
+         , withForeignPtr, touchForeignPtr, minusPtr )
 #if __GLASGOW_HASKELL__ >= 702
 import Foreign.ForeignPtr.Unsafe ( unsafeForeignPtrToPtr )
 import System.IO.Unsafe          ( unsafePerformIO )
@@ -144,6 +145,19 @@ pushInputBuffer inBuf' offset length = do
 
 inputBufferEmpty :: Stream Bool
 inputBufferEmpty = getInAvail >>= return . (==0)
+
+
+remainingInputBuffer :: Stream (ForeignPtr Word8, Int, Int)
+remainingInputBuffer = do
+
+  inBuf    <- getInBuf
+  inNext   <- getInNext
+  inAvail  <- getInAvail
+
+  -- there really should be something to pop, otherwise it's silly
+  assert (inAvail > 0) $ return ()
+
+  return (inBuf, inNext `minusPtr` unsafeForeignPtrToPtr inBuf, inAvail)
 
 
 pushOutputBuffer :: ForeignPtr Word8 -> Int -> Int -> Stream ()
@@ -820,10 +834,8 @@ getInAvail = liftM (fromIntegral :: CUInt -> Int) $
 setInNext :: Ptr Word8 -> Stream ()
 setInNext val = withStreamPtr (\ptr -> #{poke z_stream, next_in} ptr val)
 
-#ifdef DEBUG
 getInNext :: Stream (Ptr Word8)
 getInNext = withStreamPtr (#{peek z_stream, next_in})
-#endif
 
 setOutFree :: Int -> Stream ()
 setOutFree val = withStreamPtr $ \ptr ->

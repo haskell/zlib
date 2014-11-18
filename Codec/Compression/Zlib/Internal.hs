@@ -150,7 +150,7 @@ defaultDecompressBufferSize = 32 * 1024 - L.chunkOverhead
 -- errors as data rather than as exceptions. This allows you to handle error
 -- conditions explicitly.
 --
-data DecompressStream = StreamEnd
+data DecompressStream = StreamEnd L.ByteString
                       | StreamChunk S.ByteString DecompressStream
 
                         -- | An error code and a human readable error message.
@@ -183,12 +183,12 @@ data DecompressError =
 --
 -- > foldDecompressStream (:) [] (\code msg -> error msg)
 --
-foldDecompressStream :: (S.ByteString -> a -> a) -> a
+foldDecompressStream :: (S.ByteString -> a -> a) -> (L.ByteString -> a)
                  -> (DecompressError -> String -> a)
                  -> DecompressStream -> a
 foldDecompressStream chunk end err = fold
   where
-    fold StreamEnd               = end
+    fold (StreamEnd bs)          = end bs
     fold (StreamChunk bs stream) = chunk bs (fold stream)
     fold (StreamError code msg)  = err code msg
 
@@ -199,7 +199,7 @@ foldDecompressStream chunk end err = fold
 --
 fromDecompressStream :: DecompressStream -> L.ByteString
 fromDecompressStream =
-  foldDecompressStream L.Chunk L.Empty
+  foldDecompressStream L.Chunk (const L.Empty)
     (\_code msg -> error ("Codec.Compression.Zlib: " ++ msg))
 
 --TODO: throw DecompressError as an Exception class type and document that it
@@ -420,7 +420,13 @@ decompressWithErrors format (DecompressParams bits initChunkSize mdict) input =
                   return $ StreamChunk (S.PS outFPtr offset length) outChunks
           else do fillBuffers defaultDecompressBufferSize inChunks
 
-      Stream.StreamEnd      -> inChunks `seq` finish StreamEnd
+      Stream.StreamEnd      -> inChunks `seq` do
+        inputBufferEmpty <- Stream.inputBufferEmpty
+        if inputBufferEmpty
+          then do finish (StreamEnd $ L.fromChunks inChunks)
+          else do (inFPtr, offset, length) <- Stream.remainingInputBuffer
+                  finish $ StreamEnd (L.fromChunks
+                                      $ S.PS inFPtr offset length : inChunks)
         -- The decompressor tells us we're done, but that doesn't mean we have
         -- consumed all the input (there could be trailing data). But more
         -- subtle than that, the decompressor will actually never demand the
