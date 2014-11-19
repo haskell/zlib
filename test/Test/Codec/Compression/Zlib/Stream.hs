@@ -5,7 +5,7 @@
 --
 module Test.Codec.Compression.Zlib.Stream where
 
-import Codec.Compression.Zlib.Stream
+import Codec.Compression.Zlib.Internal
 import Test.QuickCheck
 
 

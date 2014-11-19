@@ -51,3 +51,18 @@ library
                    cbits/trees.c cbits/uncompr.c cbits/zutil.c
     include-dirs:  cbits
     install-includes: zlib.h zconf.h
+
+test-suite tests
+  type: exitcode-stdio-1.0
+  main-is:         Test.hs
+  other-modules:   Utils,
+                   Test.Codec.Compression.Zlib.Internal,
+                   Test.Codec.Compression.Zlib.Stream
+  hs-source-dirs:  test
+  build-depends:   base, bytestring, zlib,
+                   QuickCheck       == 2.*,
+                   HUnit            == 1.2.*,
+                   tasty            == 0.8.*,
+                   tasty-quickcheck == 0.8.*,
+                   tasty-hunit      == 0.8.*
+  ghc-options:     -Wall
