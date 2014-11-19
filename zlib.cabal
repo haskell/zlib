@@ -1,6 +1,6 @@
 name:            zlib
 version:         0.6.0.0
-copyright:       (c) 2006-2012 Duncan Coutts
+copyright:       (c) 2006-2014 Duncan Coutts
 license:         BSD3
 license-file:    LICENSE
 author:          Duncan Coutts <duncan@community.haskell.org>

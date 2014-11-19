@@ -1,14 +1,12 @@
 {-# LANGUAGE CPP, RankNTypes, BangPatterns #-}
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (c) 2006-2008 Duncan Coutts
+-- Copyright   :  (c) 2006-2014 Duncan Coutts
 -- License     :  BSD-style
 --
--- Maintainer  :  duncan@haskell.org
--- Stability   :  provisional
--- Portability :  portable (H98 + FFI)
+-- Maintainer  :  duncan@community.haskell.org
 --
--- Pure stream based interface to lower level zlib wrapper
+-- Pure and IO stream based interfaces to lower level zlib wrapper
 --
 -----------------------------------------------------------------------------
 module Codec.Compression.Zlib.Internal (

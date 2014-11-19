@@ -1,12 +1,10 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (c) 2006-2008 Duncan Coutts
+-- Copyright   :  (c) 2006-2014 Duncan Coutts
 -- License     :  BSD-style
 --
--- Maintainer  :  duncan@haskell.org
--- Stability   :  provisional
--- Portability :  portable (H98 + FFI)
+-- Maintainer  :  duncan@community.haskell.org
 --
 -- Zlib wrapper layer
 --
