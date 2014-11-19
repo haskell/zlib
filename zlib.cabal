@@ -17,7 +17,7 @@ description:     This package provides a pure interface for compressing and
                  tasks and for the few cases where more control is needed it
                  provides access to the full zlib feature set.
 build-type:      Simple
-cabal-version:   >= 1.8
+cabal-version:   >= 1.10
 extra-source-files: cbits/crc32.h cbits/inffast.h cbits/inflate.h
                     cbits/trees.h cbits/deflate.h cbits/inffixed.h
                     cbits/inftrees.h cbits/zutil.h
@@ -34,7 +34,8 @@ library
                    Codec.Compression.Zlib.Raw,
                    Codec.Compression.Zlib.Internal
   other-modules:   Codec.Compression.Zlib.Stream
-  extensions:      CPP, ForeignFunctionInterface
+  default-language: Haskell2010
+  other-extensions: CPP, ForeignFunctionInterface, RankNTypes, BangPatterns
   build-depends:   base >= 3 && < 5,
                    bytestring >= 0.9 && < 0.12
   includes:        zlib.h
@@ -59,6 +60,7 @@ test-suite tests
                    Test.Codec.Compression.Zlib.Internal,
                    Test.Codec.Compression.Zlib.Stream
   hs-source-dirs:  test
+  default-language: Haskell2010
   build-depends:   base, bytestring, zlib,
                    QuickCheck       == 2.*,
                    HUnit            == 1.2.*,
