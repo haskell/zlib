@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Utils where
 
 import qualified Data.ByteString.Lazy as BL
