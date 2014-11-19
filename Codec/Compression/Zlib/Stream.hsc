@@ -15,8 +15,9 @@ module Codec.Compression.Zlib.Stream (
 
   -- * The Zlib state monad
   Stream,
-  run,
-  unsafeInterleave,
+  State,
+  mkState,
+  runStream,
   unsafeLiftIO,
   finalise,
 
@@ -108,7 +109,6 @@ import Foreign.C
 import Data.ByteString.Internal (nullForeignPtr)
 import qualified Data.ByteString.Unsafe as B
 import Data.ByteString (ByteString)
-import System.IO.Unsafe (unsafeInterleaveIO)
 import Control.Applicative (Applicative(..))
 import Control.Monad (ap,liftM)
 import Control.Exception (assert)
@@ -117,6 +117,8 @@ import System.IO (hPutStrLn, stderr)
 #endif
 
 import Prelude hiding (length)
+
+import Control.Monad.ST.Strict
 
 #include "zlib.h"
 
@@ -355,9 +357,14 @@ thenZ_ (Z m) f =
 failZ :: String -> Stream a
 failZ msg = Z (\_ _ _ _ _ -> fail ("Codec.Compression.Zlib: " ++ msg))
 
-{-# NOINLINE run #-}
-run :: Stream a -> a
-run (Z m) = unsafePerformIO $ do
+data State s = State !(ForeignPtr StreamState)
+                     !(ForeignPtr Word8)
+                     !(ForeignPtr Word8)
+      {-# UNPACK #-} !Int
+      {-# UNPACK #-} !Int
+
+mkState :: ST s (State s)
+mkState = unsafeIOToST $ do
   ptr <- mallocBytes (#{const sizeof(z_stream)})
   #{poke z_stream, msg}       ptr nullPtr
   #{poke z_stream, zalloc}    ptr nullPtr
@@ -368,24 +375,21 @@ run (Z m) = unsafePerformIO $ do
   #{poke z_stream, avail_in}  ptr (0 :: CUInt)
   #{poke z_stream, avail_out} ptr (0 :: CUInt)
   stream <- newForeignPtr_ ptr
-  (_,_,_,_,a) <- m stream nullForeignPtr nullForeignPtr 0 0
-  return a
+  return (State stream nullForeignPtr nullForeignPtr 0 0)
 
--- This is marked as unsafe because run uses unsafePerformIO so anything
--- lifted here will end up being unsafePerformIO'd.
+runStream :: Stream a -> State s -> ST s (a, State s)
+runStream (Z m) (State stream inBuf outBuf outOffset outLength) =
+  unsafeIOToST $
+    m stream inBuf outBuf outOffset outLength >>=
+      \(inBuf', outBuf', outOffset', outLength', a) ->
+        return (a, State stream inBuf' outBuf' outOffset' outLength')
+
+-- This is marked as unsafe because runStream uses unsafeIOToST so anything
+-- lifted here can end up being unsafePerformIO'd.
 unsafeLiftIO :: IO a -> Stream a
 unsafeLiftIO m = Z $ \_stream inBuf outBuf outOffset outLength -> do
   a <- m
   return (inBuf, outBuf, outOffset, outLength, a)
-
--- It's unsafe because we discard the values here, so if you mutate anything
--- between running this and forcing the result then you'll get an inconsistent
--- stream state.
-unsafeInterleave :: Stream a -> Stream a
-unsafeInterleave (Z m) = Z $ \stream inBuf outBuf outOffset outLength -> do
-  res <- unsafeInterleaveIO (m stream inBuf outBuf outOffset outLength)
-  let select (_,_,_,_,a) = a
-  return (inBuf, outBuf, outOffset, outLength, select res)
 
 getStreamState :: Stream (ForeignPtr StreamState)
 getStreamState = Z $ \stream inBuf outBuf outOffset outLength -> do
