@@ -662,10 +662,10 @@ fromCompressionLevel (CompressionLevel n)
 --
 data WindowBits = WindowBits Int
                 | DefaultWindowBits -- This constructor must be last to make
-		                    -- the Ord instance work. The Ord instance
-				    -- is defined with and used by the tests.
-				    -- It makse sense because the default value
-				    -- is is also the max value at 15.
+                                    -- the Ord instance work. The Ord instance
+                                    -- is defined with and used by the tests.
+                                    -- It makse sense because the default value
+                                    -- is is also the max value at 15.
 
 {-# DEPRECATED DefaultWindowBits  "Use defaultWindowBits. WindowBits constructors will be hidden in version 0.7" #-}
 --FIXME: cannot deprecate constructor named the same as the type
@@ -916,7 +916,7 @@ checkFormatSupported format = do
       || format == GZipOrZlib
       -> fail $ "version 1.1.x of the zlib C library does not support the"
              ++ " 'gzip' format via the in-memory api, only the 'raw' and "
-	     ++ " 'zlib' formats."
+             ++ " 'zlib' formats."
     _ -> return ()
 
 ----------------------
@@ -956,8 +956,8 @@ foreign import ccall unsafe "zlib.h &inflateEnd"
 foreign import ccall unsafe "zlib.h deflateInit2_"
   c_deflateInit2_ :: StreamState
                   -> CInt -> CInt -> CInt -> CInt -> CInt
-		  -> Ptr CChar -> CInt
-		  -> IO CInt
+                  -> Ptr CChar -> CInt
+                  -> IO CInt
 
 c_deflateInit2 :: StreamState
                -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
