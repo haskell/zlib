@@ -34,7 +34,10 @@ library
                    Codec.Compression.Zlib.Raw,
                    Codec.Compression.Zlib.Internal
   other-modules:   Codec.Compression.Zlib.Stream
-  default-language: Haskell2010
+  if impl(ghc < 7)
+    default-language: Haskell98
+  else
+    default-language: Haskell2010
   other-extensions: CPP, ForeignFunctionInterface, RankNTypes, BangPatterns
   build-depends:   base >= 3 && < 5,
                    bytestring >= 0.9 && < 0.12

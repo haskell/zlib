@@ -109,14 +109,18 @@ import qualified Data.ByteString.Unsafe as B
 import Data.ByteString (ByteString)
 import Control.Applicative (Applicative(..))
 import Control.Monad (ap,liftM)
+#if __GLASGOW_HASKELL__ >= 702
+import Control.Monad.ST.Strict hiding (unsafeIOToST)
+import Control.Monad.ST.Unsafe
+#else
+import Control.Monad.ST.Strict
+#endif
 import Control.Exception (assert)
 #ifdef DEBUG
 import System.IO (hPutStrLn, stderr)
 #endif
 
 import Prelude hiding (length)
-
-import Control.Monad.ST.Strict
 
 #include "zlib.h"
 
