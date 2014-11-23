@@ -91,7 +91,7 @@ prop_truncated format =
     comp   = compress format defaultCompressParams
     decomp = decompressST format defaultDecompressParams
     truncated = foldDecompressStreamWithInput (\_ r -> r) (\_ -> False)
-                  (\code _ -> case code of TruncatedInput -> True; _ -> False)
+                  (\err -> case err of TruncatedInput -> True; _ -> False)
 
     shortStrings = sized $ \sz -> resize (sz `div` 6) arbitrary
 
@@ -106,43 +106,42 @@ test_bad_crc :: Assertion
 test_bad_crc =
   withSampleData "bad-crc.gz" $ \hnd -> do
     let decomp = decompressIO gzipFormat defaultDecompressParams
-    (code, msg) <- assertDecompressError hnd decomp
-    code @?= DataError
-    msg  @?= "incorrect data check"
+    err <- assertDecompressError hnd decomp
+    msg <- assertDataFormatError err
+    msg @?= "incorrect data check"
 
 test_non_gzip :: Assertion
 test_non_gzip = do
   withSampleData "not-gzip" $ \hnd -> do
     let decomp = decompressIO gzipFormat defaultDecompressParams
-    (code, msg) <- assertDecompressError hnd decomp
-    code @?= DataError
-    msg  @?= "incorrect header check"
+    err <- assertDecompressError hnd decomp
+    msg <- assertDataFormatError err
+    msg @?= "incorrect header check"
 
   withSampleData "not-gzip" $ \hnd -> do
     let decomp = decompressIO zlibFormat defaultDecompressParams
-    (code, msg) <- assertDecompressError hnd decomp
-    code @?= DataError
-    msg  @?= "incorrect header check"
+    err <- assertDecompressError hnd decomp
+    msg <- assertDataFormatError err
+    msg @?= "incorrect header check"
 
   withSampleData "not-gzip" $ \hnd -> do
     let decomp = decompressIO rawFormat defaultDecompressParams
-    (code, msg) <- assertDecompressError hnd decomp
-    code @?= DataError
-    msg  @?= "invalid code lengths set"
+    err <- assertDecompressError hnd decomp
+    msg <- assertDataFormatError err
+    msg @?= "invalid code lengths set"
 
   withSampleData "not-gzip" $ \hnd -> do
     let decomp = decompressIO gzipOrZlibFormat defaultDecompressParams
-    (code, msg) <- assertDecompressError hnd decomp
-    code @?= DataError
-    msg  @?= "incorrect header check"
+    err <- assertDecompressError hnd decomp
+    msg <- assertDataFormatError err
+    msg @?= "incorrect header check"
 
 test_custom_dict :: Assertion
 test_custom_dict =
   withSampleData "custom-dict.zlib" $ \hnd -> do
     let decomp = decompressIO zlibFormat defaultDecompressParams
-    (code, msg) <- assertDecompressError hnd decomp
-    code @?= DictionaryRequired
-    msg  @?= "custom dictionary needed"
+    err <- assertDecompressError hnd decomp
+    err @?= DictionaryRequired
 
 test_wrong_dictionary :: Assertion
 test_wrong_dictionary = do
@@ -152,9 +151,8 @@ test_wrong_dictionary = do
                                              Just (BS.pack [65,66,67])
                                          }
 
-    (code, msg) <- assertDecompressError hnd decomp
-    code @?= DictionaryRequired
-    msg  @?= "given dictionary does not match the expected one"
+    err <- assertDecompressError hnd decomp
+    err @?= DictionaryMismatch
 
 test_right_dictionary :: Assertion
 test_right_dictionary = do
@@ -200,8 +198,9 @@ test_exception =
     _ <- evaluate (BL.length (GZip.decompress compressedFile))
     assertFailure "expected exception")
 
-  `catch` \(ErrorCall message) ->
-      message @?= "Codec.Compression.Zlib: incorrect data check"
+  `catch` \err -> do
+      msg <- assertDataFormatError err
+      msg @?= "incorrect data check"
 
 
 --------------
@@ -223,7 +222,7 @@ assertDecompressOk hnd =
       (BS.hGet hnd 4000 >>=)
       (\_ r -> r)
       (\_ -> return ())
-      (\code msg -> expected "decompress ok" (show code ++ ": " ++ msg))
+      (\err -> expected "decompress ok" (show err))
 
 assertDecompressOkChunks :: Handle -> DecompressStream IO -> IO [BS.ByteString]
 assertDecompressOkChunks hnd =
@@ -231,15 +230,17 @@ assertDecompressOkChunks hnd =
       (BS.hGet hnd 4000 >>=)
       (\chunk -> liftM (chunk:))
       (\_ -> return [])
-      (\code msg -> expected "decompress ok" (show code ++ ": " ++ msg))
+      (\err -> expected "decompress ok" (show err))
 
-assertDecompressError :: Handle -> DecompressStream IO -> IO (DecompressError, String)
+assertDecompressError :: Handle -> DecompressStream IO -> IO DecompressError
 assertDecompressError hnd =
     foldDecompressStream
       (BS.hGet hnd 4000 >>=)
       (\_ r -> r)
       (\_ -> expected "StreamError" "StreamEnd")
-      (\code msg -> return (code, msg))
+      return
 
-deriving instance Show DecompressError
-deriving instance Eq DecompressError
+assertDataFormatError :: DecompressError -> IO String
+assertDataFormatError (DataFormatError detail) = return detail
+assertDataFormatError _                        = assertFailure "expected DataError"
+                                              >> return ""

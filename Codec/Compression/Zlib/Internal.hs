@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, RankNTypes, BangPatterns #-}
+{-# LANGUAGE CPP, RankNTypes, DeriveDataTypeable, BangPatterns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) 2006-2014 Duncan Coutts
@@ -67,9 +67,10 @@ module Codec.Compression.Zlib.Internal (
 
 import Prelude hiding (length)
 import Control.Monad (when)
-import Control.Exception (assert)
+import Control.Exception (Exception, throw, assert)
 import Control.Monad.ST.Lazy hiding (stToIO)
 import Control.Monad.ST.Strict (stToIO)
+import Data.Typeable (Typeable)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString          as S
@@ -165,7 +166,7 @@ data DecompressStream m
    | DecompressOutputAvailable S.ByteString (m (DecompressStream m))
    | DecompressStreamEnd S.ByteString
    -- | An error code and a human readable error message.
-   | DecompressStreamError DecompressError String
+   | DecompressStreamError DecompressError
 
 -- | The possible error cases when decompressing a stream.
 --
@@ -181,21 +182,34 @@ data DecompressError =
      -- dictionary, and it's not provided.
    | DictionaryRequired
 
+     -- | If the stream requires a dictionary and you provide one with the
+     -- wrong 'DictionaryHash' then you will get this error.
+   | DictionaryMismatch
+
      -- | If the compressed data stream is corrupted in any way then you will
      -- get this error, for example if the input data just isn't a compressed
      -- zlib data stream. In particular if the data checksum turns out to be
      -- wrong then you will get all the decompressed data but this error at the
      -- end, instead of the normal sucessful 'StreamEnd'.
-   | DataError
+   | DataFormatError String
+  deriving (Eq, Typeable)
 
---TODO: throw DecompressError as an Exception class type and document that it
--- does this.
+instance Show DecompressError where
+  show TruncatedInput     = modprefix "premature end of compressed data stream"
+  show DictionaryRequired = modprefix "compressed data stream requires custom dictionary"
+  show DictionaryMismatch = modprefix "given dictionary does not match the expected one"
+  show (DataFormatError detail) = modprefix ("compressed data stream format error (" ++ detail ++ ")")
+
+modprefix :: ShowS
+modprefix = ("Codec.Compression.Zlib: " ++)
+
+instance Exception DecompressError
 
 foldDecompressStream :: Monad m
                      => ((S.ByteString -> m a) -> m a)
                      -> (S.ByteString -> m a -> m a)
                      -> (S.ByteString -> m a)
-                     -> (DecompressError -> String -> m a)
+                     -> (DecompressError -> m a)
                      -> DecompressStream m -> m a
 foldDecompressStream input output end err = fold
   where
@@ -205,15 +219,12 @@ foldDecompressStream input output end err = fold
     fold (DecompressOutputAvailable outchunk next) =
       output outchunk (next >>= fold)
 
-    fold (DecompressStreamEnd inchunk) =
-      end inchunk
-
-    fold (DecompressStreamError code msg) =
-      err code msg
+    fold (DecompressStreamEnd inchunk) = end inchunk
+    fold (DecompressStreamError derr)  = err derr
 
 foldDecompressStreamWithInput :: (S.ByteString -> a -> a)
                               -> (L.ByteString -> a)
-                              -> (DecompressError -> String -> a)
+                              -> (DecompressError -> a)
                               -> (forall s. DecompressStream (ST s))
                               -> L.ByteString
                               -> a
@@ -233,8 +244,8 @@ foldDecompressStreamWithInput chunk end err = \s lbs ->
     fold (DecompressStreamEnd inchunk) inchunks =
       return $ end (L.fromChunks (inchunk:inchunks))
 
-    fold (DecompressStreamError code msg) _ =
-      return $ err code msg
+    fold (DecompressStreamError derr) _ =
+      return $ err derr
 
 
 data CompressStream m
@@ -499,14 +510,13 @@ decompressStream format (DecompressParams bits initChunkSize mdict) =
                   finish (DecompressStreamEnd inchunk)
 
       Stream.Error code msg -> case code of
-        Stream.BufferError  -> finish (DecompressStreamError TruncatedInput msg')
-          where msg' = "premature end of compressed stream"
+        Stream.BufferError  -> finish (DecompressStreamError TruncatedInput)
         Stream.NeedDict adler -> do
           err <- setDictionary adler mdict
           case err of
             Just streamErr  -> finish streamErr
             Nothing         -> drainBuffers lastChunk
-        Stream.DataError    -> finish (DecompressStreamError DataError msg)
+        Stream.DataError    -> finish (DecompressStreamError (DataFormatError msg))
         _                   -> fail msg
 
   -- Note even if we end with an error we still try to flush the last chunk if
@@ -526,15 +536,13 @@ decompressStream format (DecompressParams bits initChunkSize mdict) =
   setDictionary :: Stream.DictionaryHash -> Maybe S.ByteString
                 -> Stream (Maybe (DecompressStream Stream))
   setDictionary _adler Nothing =
-    return $ Just (DecompressStreamError DictionaryRequired "custom dictionary needed")
+    return $ Just (DecompressStreamError DictionaryRequired)
   setDictionary _adler (Just dict) = do
     status <- Stream.inflateSetDictionary dict
     case status of
       Stream.Ok -> return Nothing
-      Stream.Error Stream.StreamError _ ->
-        return $ Just (DecompressStreamError DictionaryRequired "provided dictionary not valid")
       Stream.Error Stream.DataError _   ->
-        return $ Just (DecompressStreamError DictionaryRequired "given dictionary does not match the expected one")
+        return $ Just (DecompressStreamError DictionaryMismatch)
       _ -> fail "error when setting inflate dictionary"
 
 
@@ -627,8 +635,8 @@ decompressStreamToLBS = \strm inchunks ->
     -- the usual case where it's empty) because the zlib and gzip formats know
     -- their own length. So we force the tail of the input here because this
     -- can be important for closing file handles etc.
-    go (DecompressStreamEnd _)  _ !_inchunks = return L.Empty
-    go (DecompressStreamError _code msg) _ _ = fail $ "Codec.Compression.Zlib: " ++ msg
+    go (DecompressStreamEnd _)     _ !_inchunks = return L.Empty
+    go (DecompressStreamError err) _  _         = throw err
 
 decompressStreamToIO :: DecompressStream Stream -> DecompressStream IO
 decompressStreamToIO =
@@ -649,8 +657,8 @@ decompressStreamToIO =
         (strm', zstate') <- stToIO $ Stream.runStream next zstate
         return (go strm' zstate')
 
-    go (DecompressStreamEnd chunk)      _ = DecompressStreamEnd chunk
-    go (DecompressStreamError code msg) _ = DecompressStreamError code msg
+    go (DecompressStreamEnd chunk) _ = DecompressStreamEnd chunk
+    go (DecompressStreamError err) _ = DecompressStreamError err
 
 decompressStreamToST :: DecompressStream Stream -> DecompressStream (ST s)
 decompressStreamToST =
@@ -671,6 +679,5 @@ decompressStreamToST =
         (strm', zstate') <- strictToLazyST $ Stream.runStream next zstate
         return (go strm' zstate')
 
-    go (DecompressStreamEnd chunk)      _ = DecompressStreamEnd chunk
-    go (DecompressStreamError code msg) _ = DecompressStreamError code msg
-
+    go (DecompressStreamEnd chunk) _ = DecompressStreamEnd chunk
+    go (DecompressStreamError err) _ = DecompressStreamError err
