@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, RankNTypes, DeriveDataTypeable, BangPatterns #-}
+{-# LANGUAGE Trustworthy #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) 2006-2014 Duncan Coutts
