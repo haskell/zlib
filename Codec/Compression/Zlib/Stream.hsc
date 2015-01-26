@@ -543,7 +543,7 @@ fromFlush Finish    = #{const Z_FINISH}
 -- variations.
 --
 data Format = GZip | Zlib | Raw | GZipOrZlib
-  deriving Eq
+  deriving (Eq, Ord, Enum, Bounded, Show, Typeable, Generic)
 
 {-# DEPRECATED GZip       "Use gzipFormat. Format constructors will be hidden in version 0.7"       #-}
 {-# DEPRECATED Zlib       "Use zlibFormat. Format constructors will be hidden in version 0.7"       #-}
@@ -588,6 +588,7 @@ formatSupportsDictionary _    = False
 -- | The compression method
 --
 data Method = Deflated
+  deriving (Eq, Ord, Enum, Bounded, Show, Typeable, Generic)
 
 {-# DEPRECATED Deflated "Use deflateMethod. Method constructors will be hidden in version 0.7" #-}
 
@@ -611,6 +612,7 @@ data CompressionLevel =
   | BestSpeed
   | BestCompression
   | CompressionLevel Int
+  deriving (Eq, Show, Typeable, Generic)
 
 {-# DEPRECATED DefaultCompression "Use defaultCompression. CompressionLevel constructors will be hidden in version 0.7" #-}
 {-# DEPRECATED NoCompression      "Use noCompression. CompressionLevel constructors will be hidden in version 0.7"      #-}
@@ -670,6 +672,7 @@ data WindowBits = WindowBits Int
                                     -- is defined with and used by the tests.
                                     -- It makse sense because the default value
                                     -- is is also the max value at 15.
+  deriving (Eq, Show, Typeable, Generic)
 
 {-# DEPRECATED DefaultWindowBits  "Use defaultWindowBits. WindowBits constructors will be hidden in version 0.7" #-}
 --FIXME: cannot deprecate constructor named the same as the type
@@ -725,6 +728,7 @@ data MemoryLevel =
   | MinMemoryLevel
   | MaxMemoryLevel
   | MemoryLevel Int
+  deriving (Eq, Show, Typeable, Generic)
 
 {-# DEPRECATED DefaultMemoryLevel "Use defaultMemoryLevel. MemoryLevel constructors will be hidden in version 0.7" #-}
 {-# DEPRECATED MinMemoryLevel     "Use minMemoryLevel. MemoryLevel constructors will be hidden in version 0.7"     #-}
@@ -774,6 +778,7 @@ data CompressionStrategy =
     DefaultStrategy
   | Filtered
   | HuffmanOnly
+  deriving (Eq, Ord, Enum, Bounded, Show, Typeable, Generic)
 
 {-
 -- -- only available in zlib 1.2 and later, uncomment if you need it.
