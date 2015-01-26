@@ -624,8 +624,9 @@ decompressStream format (DecompressParams bits initChunkSize mdict) =
           else do fillBuffers defaultDecompressBufferSize
 
       Stream.StreamEnd      -> do
-        -- The decompressor tells us we're done, but that doesn't mean we have
-        -- consumed all the input, so we return any trailing data.
+        -- The decompressor tells us we're done.
+        -- Note that there may be input bytes still available if the stream is
+        -- embeded in some other data stream, so we return any trailing data.
         inputBufferEmpty <- Stream.inputBufferEmpty
         if inputBufferEmpty
           then do finish (DecompressStreamEnd S.empty)
@@ -646,9 +647,6 @@ decompressStream format (DecompressParams bits initChunkSize mdict) =
   -- Note even if we end with an error we still try to flush the last chunk if
   -- there is one. The user just has to decide what they want to trust.
   finish end = do
-    -- Note that there may be input bytes still available if the stream
-    -- is embeded in some other data stream. Here we just silently discard
-    -- any trailing data.
     outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
     if outputBufferBytesAvailable > 0
       then do (outFPtr, offset, length) <- Stream.popOutputBuffer
