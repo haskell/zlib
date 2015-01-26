@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE ForeignFunctionInterface, DeriveDataTypeable, DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) 2006-2014 Duncan Coutts
@@ -90,8 +90,8 @@ module Codec.Compression.Zlib.Stream (
   ) where
 
 import Foreign
-         ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff, mallocBytes
-         , ForeignPtr, FinalizerPtr, newForeignPtr_, addForeignPtrFinalizer
+         ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff
+         , ForeignPtr, FinalizerPtr, mallocForeignPtrBytes, addForeignPtrFinalizer
          , withForeignPtr, touchForeignPtr, minusPtr )
 #if __GLASGOW_HASKELL__ >= 702
 import Foreign.ForeignPtr.Unsafe ( unsafeForeignPtrToPtr )
@@ -116,6 +116,8 @@ import Control.Monad.ST.Unsafe
 import Control.Monad.ST.Strict
 #endif
 import Control.Exception (assert)
+import Data.Typeable (Typeable)
+import GHC.Generics (Generic)
 #ifdef DEBUG
 import System.IO (hPutStrLn, stderr)
 #endif
