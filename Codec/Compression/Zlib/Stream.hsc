@@ -367,16 +367,16 @@ data State s = State !(ForeignPtr StreamState)
 
 mkState :: ST s (State s)
 mkState = unsafeIOToST $ do
-  ptr <- mallocBytes (#{const sizeof(z_stream)})
-  #{poke z_stream, msg}       ptr nullPtr
-  #{poke z_stream, zalloc}    ptr nullPtr
-  #{poke z_stream, zfree}     ptr nullPtr
-  #{poke z_stream, opaque}    ptr nullPtr
-  #{poke z_stream, next_in}   ptr nullPtr
-  #{poke z_stream, next_out}  ptr nullPtr
-  #{poke z_stream, avail_in}  ptr (0 :: CUInt)
-  #{poke z_stream, avail_out} ptr (0 :: CUInt)
-  stream <- newForeignPtr_ ptr
+  stream <- mallocForeignPtrBytes (#{const sizeof(z_stream)})
+  withForeignPtr stream $ \ptr -> do
+    #{poke z_stream, msg}       ptr nullPtr
+    #{poke z_stream, zalloc}    ptr nullPtr
+    #{poke z_stream, zfree}     ptr nullPtr
+    #{poke z_stream, opaque}    ptr nullPtr
+    #{poke z_stream, next_in}   ptr nullPtr
+    #{poke z_stream, next_out}  ptr nullPtr
+    #{poke z_stream, avail_in}  ptr (0 :: CUInt)
+    #{poke z_stream, avail_out} ptr (0 :: CUInt)
   return (State stream nullForeignPtr nullForeignPtr 0 0)
 
 runStream :: Stream a -> State s -> ST s (a, State s)
