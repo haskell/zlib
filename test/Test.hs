@@ -166,7 +166,7 @@ test_right_dictionary = do
 
 test_trailing_data :: Assertion
 test_trailing_data =
-  withSampleData "two-files.gzip" $ \hnd -> do
+  withSampleData "two-files.gz" $ \hnd -> do
     let decomp = decompressIO gzipFormat defaultDecompressParams
     chunks <- assertDecompressOkChunks hnd decomp
     case chunks of
