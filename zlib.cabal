@@ -42,6 +42,7 @@ library
   other-modules:   Codec.Compression.Zlib.Stream
   if impl(ghc < 7)
     default-language: Haskell98
+    default-extensions: PatternGuards
   else
     default-language: Haskell2010
   other-extensions: CPP, ForeignFunctionInterface, RankNTypes, BangPatterns,
