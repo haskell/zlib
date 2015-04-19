@@ -1,4 +1,3 @@
-{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Test code and properties for "Codec.Compression.Zlib.Internal"
@@ -12,8 +11,6 @@ import Test.QuickCheck
 import Control.Monad (ap)
 
 
-deriving instance Show CompressParams
-
 instance Arbitrary CompressParams where
   arbitrary = return CompressParams `ap` arbitrary `ap` arbitrary
                                     `ap` arbitrary `ap` arbitrary
@@ -26,8 +23,6 @@ arbitraryBufferSize = frequency $ [(10, return n) | n <- [1..1024]] ++
                                   [(40, return n) | n <- [8193..131072]] ++
                                   [(1, return n) | n <- [131072..1048576]]
 
-
-deriving instance Show DecompressParams
 
 instance Arbitrary DecompressParams where
   arbitrary = return DecompressParams `ap` arbitrary

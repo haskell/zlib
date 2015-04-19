@@ -714,10 +714,10 @@ fromCompressionLevel (CompressionLevel n)
 data WindowBits = WindowBits Int
                 | DefaultWindowBits -- This constructor must be last to make
                                     -- the Ord instance work. The Ord instance
-                                    -- is defined with and used by the tests.
+                                    -- is used by the tests.
                                     -- It makse sense because the default value
                                     -- is is also the max value at 15.
-  deriving (Eq, Show, Typeable
+  deriving (Eq, Ord, Show, Typeable
 #if __GLASGOW_HASKELL__ >= 702
               , Generic
 #endif

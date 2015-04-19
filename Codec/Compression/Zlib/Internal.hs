@@ -106,7 +106,7 @@ data CompressParams = CompressParams {
   compressStrategy    :: !Stream.CompressionStrategy,
   compressBufferSize  :: !Int,
   compressDictionary  :: Maybe S.ByteString
-}
+} deriving Show
 
 -- | The full set of parameters for decompression. The defaults are
 -- 'defaultDecompressParams'.
@@ -132,7 +132,7 @@ data DecompressParams = DecompressParams {
   decompressBufferSize :: !Int,
   decompressDictionary :: Maybe S.ByteString,
   decompressAllMembers :: Bool
-}
+} deriving Show
 
 -- | The default set of parameters for compression. This is typically used with
 -- the @compressWith@ function with specific parameters overridden.

@@ -1,4 +1,3 @@
-{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Test code and properties for "Codec.Compression.Zlib.Stream"
@@ -24,7 +23,6 @@ instance Arbitrary CompressionLevel where
                       ++ map compressionLevel [1..9]
 
 
-deriving instance Ord WindowBits
 instance Arbitrary WindowBits where
   arbitrary = elements $ defaultWindowBits:map windowBits [8..15]
 
