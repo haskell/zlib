@@ -10,7 +10,7 @@ import Test.QuickCheck
 -- QuickCheck Utils
 
 maxStrSize :: Double
-maxStrSize = 5000
+maxStrSize = 500
 
 -- convert a QC size parameter into one for generating long lists,
 -- growing inverse exponentially up to maxStrSize

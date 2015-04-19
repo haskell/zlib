@@ -77,6 +77,7 @@ prop_gziporzlib2 :: CompressParams
                  -> DecompressParams
                  -> Property
 prop_gziporzlib2 cp dp =
+   decompressWindowBits dp >= compressWindowBits cp &&
    decompressBufferSize dp > 0 && compressBufferSize cp > 0 ==>
    liftM2 (==) (decompress gzipOrZlibFormat dp . compress gzipFormat cp) id
 

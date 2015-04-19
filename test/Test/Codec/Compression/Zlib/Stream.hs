@@ -27,8 +27,6 @@ instance Arbitrary CompressionLevel where
 deriving instance Ord WindowBits
 instance Arbitrary WindowBits where
   arbitrary = elements $ defaultWindowBits:map windowBits [8..15]
-  shrink DefaultWindowBits = []
-  shrink (WindowBits n) = defaultWindowBits:map windowBits [n+1..15]
 
 
 instance Arbitrary MemoryLevel where
