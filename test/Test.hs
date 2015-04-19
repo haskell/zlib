@@ -1,5 +1,4 @@
-{-# LANGUAGE StandaloneDeriving #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE CPP #-}
 
 module Main where
 
@@ -24,7 +23,10 @@ import qualified Data.ByteString.Char8 as BS.Char8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString      as BS
 import System.IO
+#if !(MIN_VERSION_base(4,6,0))
 import Prelude hiding (catch)
+#endif
+
 
 
 main :: IO ()
@@ -161,7 +163,7 @@ test_right_dictionary = do
     dict <- readSampleData "custom-dict.zlib-dict"
     let decomp = decompressIO zlibFormat defaultDecompressParams {
                                            decompressDictionary =
-                                             Just (BL.toStrict dict)
+                                             Just (toStrict dict)
                                          }
     assertDecompressOk hnd decomp
 
@@ -203,6 +205,12 @@ test_exception =
       msg <- assertDataFormatError err
       msg @?= "incorrect data check"
 
+toStrict :: BL.ByteString -> BS.ByteString
+#if MIN_VERSION_bytestring(0,10,0)
+toStrict = BL.toStrict
+#else
+toStrict = BS.concat . BL.toChunks
+#endif
 
 --------------
 -- HUnit Utils
