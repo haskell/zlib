@@ -171,6 +171,13 @@ defaultDecompressBufferSize = 32 * 1024 - L.chunkOverhead
 -- data chunks as output. The process is incremental, in that the demand for
 -- input and provision of output are interleaved.
 --
+-- To indicate the end of the input supply an empty input chunk. Note that
+-- for 'gzipFormat' with the default 'decompressAllMembers' @True@ you will
+-- have to do this, as the decompressor will look for any following members.
+-- With 'decompressAllMembers' @False@ the decompressor knows when the data
+-- ends and will produce 'DecompressStreamEnd' without you having to supply an
+-- empty chunk to indicate the end of the input.
+--
 data DecompressStream m =
 
      DecompressInputRequired {
