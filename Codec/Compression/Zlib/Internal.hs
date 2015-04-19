@@ -303,9 +303,9 @@ foldDecompressStreamWithInput chunk end err = \s lbs ->
 -- appropriate in all cicumstances.
 --
 -- For these cases an incremental interface is more appropriate. This interface
--- allows both incremental input and output. Chunks of input data to be
--- supplied one by one (e.g. as they are obtained from an input source like a
--- file or network source). Output is also produced chunk by chunk.
+-- allows both incremental input and output. Chunks of input data are supplied
+-- one by one (e.g. as they are obtained from an input source like a file or
+-- network source). Output is also produced chunk by chunk.
 --
 -- The incremental input and output is managed via the 'CompressStream' and
 -- 'DecompressStream' types. They represents the unfolding of the process of
