@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP, RankNTypes, DeriveDataTypeable, BangPatterns #-}
+#if __GLASGOW_HASKELL__ >= 702
 {-# LANGUAGE Trustworthy #-}
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) 2006-2014 Duncan Coutts
