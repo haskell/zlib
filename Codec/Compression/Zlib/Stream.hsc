@@ -57,12 +57,14 @@ module Codec.Compression.Zlib.Stream (
   Status(..),
   Flush(..),
   ErrorCode(..),
+  -- ** Special operations
+  inflateReset,
 
   -- * Buffer management
   -- ** Input buffer
   pushInputBuffer,
   inputBufferEmpty,
-  remainingInputBuffer,
+  popRemainingInputBuffer,
 
   -- ** Output buffer
   pushOutputBuffer,
@@ -153,8 +155,8 @@ inputBufferEmpty :: Stream Bool
 inputBufferEmpty = getInAvail >>= return . (==0)
 
 
-remainingInputBuffer :: Stream (ForeignPtr Word8, Int, Int)
-remainingInputBuffer = do
+popRemainingInputBuffer :: Stream (ForeignPtr Word8, Int, Int)
+popRemainingInputBuffer = do
 
   inBuf    <- getInBuf
   inNext   <- getInNext
@@ -162,6 +164,7 @@ remainingInputBuffer = do
 
   -- there really should be something to pop, otherwise it's silly
   assert (inAvail > 0) $ return ()
+  setInAvail 0
 
   return (inBuf, inNext `minusPtr` unsafeForeignPtrToPtr inBuf, inAvail)
 
@@ -267,6 +270,23 @@ inflate flush = do
   outAvail <- getOutAvail
   setOutAvail (outAvail + outExtra)
   return result
+
+
+inflateReset :: Stream ()
+inflateReset = do
+
+  outAvail <- getOutAvail
+  inAvail  <- getInAvail
+  -- At the point where this is used, all the output should have been consumed
+  -- and any trailing input should be extracted and resupplied explicitly, not
+  -- just left.
+  assert (outAvail == 0 && inAvail == 0) $ return ()
+
+  err <- withStreamState $ \zstream ->
+    c_inflateReset zstream
+  failIfError err
+
+
 
 deflateSetDictionary :: ByteString -> Stream Status
 deflateSetDictionary dict = do
@@ -963,6 +983,8 @@ foreign import ccall unsafe "zlib.h inflate"
 foreign import ccall unsafe "zlib.h &inflateEnd"
   c_inflateEnd :: FinalizerPtr StreamState
 
+foreign import ccall unsafe "zlib.h inflateReset"
+  c_inflateReset :: StreamState -> IO CInt
 
 foreign import ccall unsafe "zlib.h deflateInit2_"
   c_deflateInit2_ :: StreamState

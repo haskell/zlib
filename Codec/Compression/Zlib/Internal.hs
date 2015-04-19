@@ -81,6 +81,7 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
+import Data.Word (Word8)
 
 import qualified Codec.Compression.Zlib.Stream as Stream
 import Codec.Compression.Zlib.Stream (Stream)
@@ -127,7 +128,8 @@ data CompressParams = CompressParams {
 data DecompressParams = DecompressParams {
   decompressWindowBits :: !Stream.WindowBits,
   decompressBufferSize :: !Int,
-  decompressDictionary :: Maybe S.ByteString
+  decompressDictionary :: Maybe S.ByteString,
+  decompressAllMembers :: Bool
 }
 
 -- | The default set of parameters for compression. This is typically used with
@@ -151,7 +153,8 @@ defaultDecompressParams :: DecompressParams
 defaultDecompressParams = DecompressParams {
   decompressWindowBits = Stream.defaultWindowBits,
   decompressBufferSize = defaultDecompressBufferSize,
-  decompressDictionary = Nothing
+  decompressDictionary = Nothing,
+  decompressAllMembers = True
 }
 
 -- | The default chunk sizes for the output of compression and decompression
@@ -166,13 +169,26 @@ defaultDecompressBufferSize = 32 * 1024 - L.chunkOverhead
 -- data chunks as output. The process is incremental, in that the demand for
 -- input and provision of output are interleaved.
 --
-data DecompressStream m
-   = DecompressInputRequired  (S.ByteString -> m (DecompressStream m))
-   | DecompressOutputAvailable S.ByteString (m (DecompressStream m))
+data DecompressStream m =
+
+     DecompressInputRequired {
+         decompressSupplyInput :: S.ByteString -> m (DecompressStream m)
+       }
+
+   | DecompressOutputAvailable {
+         decompressOutput :: !S.ByteString,
+         decompressNext   :: m (DecompressStream m)
+       }
+
    -- | Includes any trailing unconsumed /input/ data.
-   | DecompressStreamEnd S.ByteString
+   | DecompressStreamEnd {
+         decompressUnconsumedInput :: S.ByteString
+       }
+
    -- | An error code
-   | DecompressStreamError DecompressError
+   | DecompressStreamError {
+         decompressStreamError :: DecompressError
+       }
 
 -- | The possible error cases when decompressing a stream.
 --
@@ -344,9 +360,16 @@ foldDecompressStreamWithInput chunk end err = \s lbs ->
 -- data chunks as output. The process is incremental, in that the demand for
 -- input and provision of output are interleaved.
 --
-data CompressStream m
-   = CompressInputRequired  (S.ByteString -> m (CompressStream m))
-   | CompressOutputAvailable S.ByteString (m (CompressStream m))
+data CompressStream m =
+     CompressInputRequired {
+         compressSupplyInput :: S.ByteString -> m (CompressStream m)
+       }
+
+   | CompressOutputAvailable {
+        compressOutput :: !S.ByteString,
+        compressNext   :: m (CompressStream m)
+      }
+
    | CompressStreamEnd
 
 -- | A fold over the 'CompressStream' in the given monad.
@@ -419,15 +442,18 @@ compressST :: Stream.Format -> CompressParams -> CompressStream (ST s)
 --
 compressIO :: Stream.Format -> CompressParams -> CompressStream IO
 
-compress   format params = compressStreamToLBS (compressStream format params)
-compressST format params = compressStreamToST  (compressStream format params)
-compressIO format params = compressStreamToIO  (compressStream format params)
+compress   format params = foldCompressStreamWithInput
+                             L.Chunk L.Empty
+                             (compressStreamST format params)
+compressST format params = compressStreamST  format params
+compressIO format params = compressStreamIO  format params
 
-compressStream :: Stream.Format -> CompressParams -> CompressStream Stream
+compressStream :: Stream.Format -> CompressParams -> S.ByteString
+               -> Stream (CompressStream Stream)
 compressStream format (CompressParams compLevel method bits memLevel
                                 strategy initChunkSize mdict) =
 
-    CompressInputRequired $ \chunk -> do
+    \chunk -> do
       Stream.deflateInit format compLevel method bits memLevel strategy
       setDictionary mdict
       case chunk of
@@ -545,23 +571,40 @@ decompressST :: Stream.Format -> DecompressParams -> DecompressStream (ST s)
 --
 decompressIO :: Stream.Format -> DecompressParams -> DecompressStream IO
 
-decompress   format params = decompressStreamToLBS (decompressStream format params)
-decompressST format params = decompressStreamToST  (decompressStream format params)
-decompressIO format params = decompressStreamToIO  (decompressStream format params)
+decompress   format params = foldDecompressStreamWithInput
+                               L.Chunk (const L.Empty) throw
+                               (decompressStreamST format params)
+decompressST format params = decompressStreamST  format params
+decompressIO format params = decompressStreamIO  format params
 
 
-decompressStream :: Stream.Format -> DecompressParams -> DecompressStream Stream
-decompressStream format (DecompressParams bits initChunkSize mdict) =
+decompressStream :: Stream.Format -> DecompressParams
+                 -> Bool -> S.ByteString
+                 -> Stream (DecompressStream Stream)
+decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
+                 resume =
 
-    DecompressInputRequired $ \chunk -> do
-      Stream.inflateInit format bits
+    \chunk -> do
+      inputBufferEmpty <- Stream.inputBufferEmpty
+      outputBufferFull <- Stream.outputBufferFull
+      assert inputBufferEmpty $
+        if resume then assert (format == Stream.gzipFormat && allMembers) $
+                       Stream.inflateReset
+                  else assert outputBufferFull $
+                       Stream.inflateInit format bits
       case chunk of
         _ | S.null chunk ->
           fillBuffers 4  --always an error anyway
 
         S.PS inFPtr offset length -> do
           Stream.pushInputBuffer inFPtr offset length
-          fillBuffers initChunkSize
+          -- Normally we start with no output buffer (so counts as full) but
+          -- if we're resuming then we'll usually still have output buffer
+          -- space available
+          assert (if not resume then outputBufferFull else True) $ return ()
+          if outputBufferFull
+            then fillBuffers initChunkSize
+            else drainBuffers False
 
   where
     -- we flick between two states:
@@ -630,7 +673,7 @@ decompressStream format (DecompressParams bits initChunkSize mdict) =
         inputBufferEmpty <- Stream.inputBufferEmpty
         if inputBufferEmpty
           then do finish (DecompressStreamEnd S.empty)
-          else do (inFPtr, offset, length) <- Stream.remainingInputBuffer
+          else do (inFPtr, offset, length) <- Stream.popRemainingInputBuffer
                   let inchunk = S.PS inFPtr offset length
                   finish (DecompressStreamEnd inchunk)
 
@@ -650,10 +693,8 @@ decompressStream format (DecompressParams bits initChunkSize mdict) =
     outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
     if outputBufferBytesAvailable > 0
       then do (outFPtr, offset, length) <- Stream.popOutputBuffer
-              Stream.finalise
               return (DecompressOutputAvailable (S.PS outFPtr offset length) (return end))
-      else do Stream.finalise
-              return end
+      else return end
 
   setDictionary :: Stream.DictionaryHash -> Maybe S.ByteString
                 -> Stream (Maybe (DecompressStream Stream))
@@ -668,138 +709,224 @@ decompressStream format (DecompressParams bits initChunkSize mdict) =
       _ -> fail "error when setting inflate dictionary"
 
 
-compressStreamToLBS :: CompressStream Stream -> L.ByteString -> L.ByteString
-compressStreamToLBS = \strm inchunks ->
-    runST (do zstate <- strictToLazyST $ Stream.mkState
-              go strm zstate inchunks)
-  where
-    go :: CompressStream Stream -> Stream.State s
-       -> L.ByteString -> ST s L.ByteString
-    go (CompressInputRequired next) zstate L.Empty = do
-      (strm', zstate') <- strictToLazyST $ Stream.runStream (next S.empty) zstate
-      go strm' zstate' L.Empty
+------------------------------------------------------------------------------
 
-    go (CompressInputRequired next) zstate (L.Chunk inchunk inchunks') = do
-      (strm', zstate') <- strictToLazyST $ Stream.runStream (next inchunk) zstate
-      go strm' zstate' inchunks'
+mkStateST :: ST s (Stream.State s)
+mkStateIO :: IO (Stream.State RealWorld)
+mkStateST = strictToLazyST Stream.mkState
+mkStateIO = stToIO Stream.mkState
 
-    go (CompressOutputAvailable outchunk next) zstate inchunks = do
-      (strm', zstate') <- strictToLazyST $ Stream.runStream next zstate
-      outchunks <- go strm' zstate' inchunks
-      return (L.Chunk outchunk outchunks)
+runStreamST :: Stream a -> Stream.State s -> ST s (a, Stream.State s)
+runStreamIO :: Stream a -> Stream.State RealWorld -> IO (a, Stream.State RealWorld)
+runStreamST strm zstate = strictToLazyST (Stream.runStream strm zstate)
+runStreamIO strm zstate = stToIO (Stream.runStream strm zstate)
 
-    go CompressStreamEnd _ _ = return L.Empty
-
-compressStreamToIO :: CompressStream Stream -> CompressStream IO
-compressStreamToIO =
-    \(CompressInputRequired next) ->
-      CompressInputRequired $ \chunk -> do
-        zstate <- stToIO Stream.mkState
-        (strm', zstate') <- stToIO $ Stream.runStream (next chunk) zstate
+compressStreamIO :: Stream.Format -> CompressParams -> CompressStream IO
+compressStreamIO format params =
+    CompressInputRequired {
+      compressSupplyInput = \chunk -> do
+        zstate <- mkStateIO
+        let next = compressStream format params
+        (strm', zstate') <- runStreamIO (next chunk) zstate
         return (go strm' zstate')
+    }
   where
     go :: CompressStream Stream -> Stream.State RealWorld -> CompressStream IO
     go (CompressInputRequired next) zstate =
-      CompressInputRequired $ \chunk -> do
-        (strm', zstate') <- stToIO $ Stream.runStream (next chunk) zstate
-        return (go strm' zstate')
+      CompressInputRequired {
+        compressSupplyInput = \chunk -> do
+          (strm', zstate') <- runStreamIO (next chunk) zstate
+          return (go strm' zstate')
+      }
 
     go (CompressOutputAvailable chunk next) zstate =
       CompressOutputAvailable chunk $ do
-        (strm', zstate') <- stToIO $ Stream.runStream next zstate
+        (strm', zstate') <- runStreamIO next zstate
         return (go strm' zstate')
 
     go CompressStreamEnd _ = CompressStreamEnd
 
-compressStreamToST :: CompressStream Stream -> CompressStream (ST s)
-compressStreamToST =
-    \(CompressInputRequired next) ->
-      CompressInputRequired $ \chunk -> do
-        zstate <- strictToLazyST $ Stream.mkState
-        (strm', zstate') <- strictToLazyST $ Stream.runStream (next chunk) zstate
+compressStreamST :: Stream.Format -> CompressParams -> CompressStream (ST s)
+compressStreamST format params =
+    CompressInputRequired {
+      compressSupplyInput = \chunk -> do
+        zstate <- mkStateST
+        let next = compressStream format params
+        (strm', zstate') <- runStreamST (next chunk) zstate
         return (go strm' zstate')
+    }
   where
     go :: CompressStream Stream -> Stream.State s -> CompressStream (ST s)
     go (CompressInputRequired next) zstate =
-      CompressInputRequired $ \chunk -> do
-        (strm', zstate') <- strictToLazyST $ Stream.runStream (next chunk) zstate
-        return (go strm' zstate')
+      CompressInputRequired {
+        compressSupplyInput = \chunk -> do
+          (strm', zstate') <- runStreamST (next chunk) zstate
+          return (go strm' zstate')
+      }
 
     go (CompressOutputAvailable chunk next) zstate =
       CompressOutputAvailable chunk $ do
-        (strm', zstate') <- strictToLazyST $ Stream.runStream next zstate
+        (strm', zstate') <- runStreamST next zstate
         return (go strm' zstate')
 
     go CompressStreamEnd _ = CompressStreamEnd
 
 
-decompressStreamToLBS :: DecompressStream Stream -> L.ByteString -> L.ByteString
-decompressStreamToLBS = \strm inchunks ->
-    runST (do zstate <- strictToLazyST Stream.mkState
-              go strm zstate inchunks)
+decompressStreamIO :: Stream.Format -> DecompressParams -> DecompressStream IO
+decompressStreamIO format params =
+      DecompressInputRequired $ \chunk -> do
+        zstate <- mkStateIO
+        let next = decompressStream format params False
+        (strm', zstate') <- runStreamIO (next chunk) zstate
+        go strm' zstate' (S.null chunk)
   where
-    go :: DecompressStream Stream -> Stream.State s
-       -> L.ByteString -> ST s L.ByteString
-    go (DecompressInputRequired next) zstate L.Empty = do
-      (strm', zstate') <- strictToLazyST $ Stream.runStream (next S.empty) zstate
-      go strm' zstate' L.Empty
+    go :: DecompressStream Stream -> Stream.State RealWorld -> Bool
+       -> IO (DecompressStream IO)
+    go (DecompressInputRequired next) zstate !_ =
+      return $ DecompressInputRequired $ \chunk -> do
+        (strm', zstate') <- runStreamIO (next chunk) zstate
+        go strm' zstate' (S.null chunk)
 
-    go (DecompressInputRequired next) zstate (L.Chunk inchunk inchunks') = do
-      (strm', zstate') <- strictToLazyST $ Stream.runStream (next inchunk) zstate
-      go strm' zstate' inchunks'
+    go (DecompressOutputAvailable chunk next) zstate !eof =
+      return $ DecompressOutputAvailable chunk $ do
+        (strm', zstate') <- runStreamIO next zstate
+        go strm' zstate' eof
 
-    go (DecompressOutputAvailable outchunk next) zstate inchunks = do
-      (strm', zstate') <- strictToLazyST $ Stream.runStream next zstate
-      outchunks <- go strm' zstate' inchunks
-      return (L.Chunk outchunk outchunks)
+    go (DecompressStreamEnd unconsumed) zstate !eof
+      | format == Stream.gzipFormat
+      , decompressAllMembers params
+      , not eof    = tryFollowingStream unconsumed zstate
+      | otherwise  = finaliseStreamEnd unconsumed zstate
 
-    -- the decompressor will actually never demand the tail of the input (in
-    -- the usual case where it's empty) because the zlib and gzip formats know
-    -- their own length. So we force the tail of the input here because this
-    -- can be important for closing file handles etc.
-    go (DecompressStreamEnd _)     _ !_inchunks = return L.Empty
-    go (DecompressStreamError err) _  _         = throw err
+    go (DecompressStreamError err) zstate !_ = finaliseStreamError err zstate
 
-decompressStreamToIO :: DecompressStream Stream -> DecompressStream IO
-decompressStreamToIO =
-    \(DecompressInputRequired next) ->
+    tryFollowingStream :: S.ByteString -> Stream.State RealWorld -> IO (DecompressStream IO)
+    tryFollowingStream chunk zstate = case S.length chunk of
+      0 -> return $ DecompressInputRequired $ \chunk' -> case S.length chunk' of
+         0 -> finaliseStreamEnd S.empty zstate
+         1 | S.head chunk' /= 0x1f
+           -> finaliseStreamEnd chunk' zstate
+         1 -> return $ DecompressInputRequired $ \chunk'' -> case S.length chunk'' of
+            0 -> finaliseStreamEnd chunk' zstate
+            _ -> checkHeaderSplit (S.head chunk') chunk'' zstate
+         _    -> checkHeader chunk' zstate
+      1 -> return $ DecompressInputRequired $ \chunk' -> case S.length chunk' of
+         0    -> finaliseStreamEnd chunk zstate
+         _    -> checkHeaderSplit (S.head chunk) chunk' zstate
+      _       -> checkHeader chunk zstate
+
+    checkHeaderSplit :: Word8 -> S.ByteString -> Stream.State RealWorld -> IO (DecompressStream IO)
+    checkHeaderSplit 0x1f chunk zstate
+      | S.head chunk == 0x8b = do
+        let resume = decompressStream format params True (S.pack [0x1f, 0x8b])
+        if S.length chunk > 1
+          then do
+            -- have to handle the remaining data in this chunk
+            (DecompressInputRequired next, zstate') <- runStreamIO resume zstate
+            (strm', zstate'') <- runStreamIO (next (S.tail chunk)) zstate'
+            go strm' zstate'' False
+          else do
+            -- subtle special case when the chunk tail is empty
+            -- yay for QC tests
+            (strm, zstate') <- runStreamIO resume zstate
+            go strm zstate' False
+    checkHeaderSplit byte chunk zstate =
+        finaliseStreamEnd (S.cons byte chunk) zstate
+
+    checkHeader :: S.ByteString -> Stream.State RealWorld -> IO (DecompressStream IO)
+    checkHeader chunk zstate
+      | S.index chunk 0 == 0x1f
+      , S.index chunk 1 == 0x8b = do
+        let resume = decompressStream format params True chunk
+        (strm', zstate') <- runStreamIO resume zstate
+        go strm' zstate' False
+    checkHeader chunk zstate = finaliseStreamEnd chunk zstate
+
+    finaliseStreamEnd unconsumed zstate = do
+        _ <- runStreamIO Stream.finalise zstate
+        return (DecompressStreamEnd unconsumed)
+
+    finaliseStreamError err zstate = do
+        _ <- runStreamIO Stream.finalise zstate
+        return (DecompressStreamError err)
+
+
+decompressStreamST :: Stream.Format -> DecompressParams -> DecompressStream (ST s)
+decompressStreamST format params =
       DecompressInputRequired $ \chunk -> do
-        zstate <- stToIO Stream.mkState
-        (strm', zstate') <- stToIO $ Stream.runStream (next chunk) zstate
-        return (go strm' zstate')
+        zstate <- mkStateST
+        let next = decompressStream format params False
+        (strm', zstate') <- runStreamST (next chunk) zstate
+        go strm' zstate' (S.null chunk)
   where
-    go :: DecompressStream Stream -> Stream.State RealWorld -> DecompressStream IO
-    go (DecompressInputRequired next) zstate =
-      DecompressInputRequired $ \chunk -> do
-        (strm', zstate') <- stToIO $ Stream.runStream (next chunk) zstate
-        return (go strm' zstate')
+    go :: DecompressStream Stream -> Stream.State s -> Bool
+       -> ST s (DecompressStream (ST s))
+    go (DecompressInputRequired next) zstate !_ =
+      return $ DecompressInputRequired $ \chunk -> do
+        (strm', zstate') <- runStreamST (next chunk) zstate
+        go strm' zstate' (S.null chunk)
 
-    go (DecompressOutputAvailable chunk next) zstate =
-      DecompressOutputAvailable chunk $ do
-        (strm', zstate') <- stToIO $ Stream.runStream next zstate
-        return (go strm' zstate')
+    go (DecompressOutputAvailable chunk next) zstate !eof =
+      return $ DecompressOutputAvailable chunk $ do
+        (strm', zstate') <- runStreamST next zstate
+        go strm' zstate' eof
 
-    go (DecompressStreamEnd chunk) _ = DecompressStreamEnd chunk
-    go (DecompressStreamError err) _ = DecompressStreamError err
+    go (DecompressStreamEnd unconsumed) zstate !eof
+      | format == Stream.gzipFormat
+      , decompressAllMembers params
+      , not eof    = tryFollowingStream unconsumed zstate
+      | otherwise  = finaliseStreamEnd unconsumed zstate
 
-decompressStreamToST :: DecompressStream Stream -> DecompressStream (ST s)
-decompressStreamToST =
-    \(DecompressInputRequired next) ->
-      DecompressInputRequired $ \chunk -> do
-        zstate <- strictToLazyST Stream.mkState
-        (strm', zstate') <- strictToLazyST $ Stream.runStream (next chunk) zstate
-        return (go strm' zstate')
-  where
-    go :: DecompressStream Stream -> Stream.State s -> DecompressStream (ST s)
-    go (DecompressInputRequired next) zstate =
-      DecompressInputRequired $ \chunk -> do
-        (strm', zstate') <- strictToLazyST $ Stream.runStream (next chunk) zstate
-        return (go strm' zstate')
+    go (DecompressStreamError err) zstate !_ = finaliseStreamError err zstate
 
-    go (DecompressOutputAvailable chunk next) zstate =
-      DecompressOutputAvailable chunk $ do
-        (strm', zstate') <- strictToLazyST $ Stream.runStream next zstate
-        return (go strm' zstate')
 
-    go (DecompressStreamEnd chunk) _ = DecompressStreamEnd chunk
-    go (DecompressStreamError err) _ = DecompressStreamError err
+    tryFollowingStream :: S.ByteString -> Stream.State s -> ST s (DecompressStream (ST s))
+    tryFollowingStream chunk zstate = 
+      case S.length chunk of
+      0 -> return $ DecompressInputRequired $ \chunk' -> case S.length chunk' of
+         0 -> finaliseStreamEnd S.empty zstate
+         1 | S.head chunk' /= 0x1f
+           -> finaliseStreamEnd chunk' zstate
+         1 -> return $ DecompressInputRequired $ \chunk'' -> case S.length chunk'' of
+            0 -> finaliseStreamEnd chunk' zstate
+            _ -> checkHeaderSplit (S.head chunk') chunk'' zstate
+         _    -> checkHeader chunk' zstate
+      1 -> return $ DecompressInputRequired $ \chunk' -> case S.length chunk' of
+         0    -> finaliseStreamEnd chunk zstate
+         _    -> checkHeaderSplit (S.head chunk) chunk' zstate
+      _       -> checkHeader chunk zstate
+
+    checkHeaderSplit :: Word8 -> S.ByteString -> Stream.State s -> ST s (DecompressStream (ST s))
+    checkHeaderSplit 0x1f chunk zstate
+      | S.head chunk == 0x8b = do
+        let resume = decompressStream format params True (S.pack [0x1f, 0x8b])
+        if S.length chunk > 1
+          then do
+            -- have to handle the remaining data in this chunk
+            (DecompressInputRequired next, zstate') <- runStreamST resume zstate
+            (strm', zstate'') <- runStreamST (next (S.tail chunk)) zstate'
+            go strm' zstate'' False
+          else do
+            -- subtle special case when the chunk tail is empty
+            -- yay for QC tests
+            (strm, zstate') <- runStreamST resume zstate
+            go strm zstate' False
+    checkHeaderSplit byte chunk zstate =
+        finaliseStreamEnd (S.cons byte chunk) zstate
+
+    checkHeader :: S.ByteString -> Stream.State s -> ST s (DecompressStream (ST s))
+    checkHeader chunk zstate
+      | S.index chunk 0 == 0x1f
+      , S.index chunk 1 == 0x8b = do
+        let resume = decompressStream format params True chunk
+        (strm', zstate') <- runStreamST resume zstate
+        go strm' zstate' False
+    checkHeader chunk zstate = finaliseStreamEnd chunk zstate
+
+    finaliseStreamEnd unconsumed zstate = do
+        _ <- runStreamST Stream.finalise zstate
+        return (DecompressStreamEnd unconsumed)
+
+    finaliseStreamError err zstate = do
+        _ <- runStreamST Stream.finalise zstate
+        return (DecompressStreamError err)
