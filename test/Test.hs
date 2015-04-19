@@ -50,6 +50,7 @@ main = defaultMain $
       testCase "handle trailing data"      test_trailing_data,
       testCase "multiple gzip members"     test_multiple_members,
       testCase "check small input chunks"  test_small_chunks,
+      testCase "check empty input"         test_empty,
       testCase "check exception raised"    test_exception
     ]
   ]
@@ -244,6 +245,20 @@ test_small_chunks = do
   compressedFile   <- readSampleData "hello.gz"
   (GZip.decompress . smallChunks) compressedFile @?= GZip.decompress compressedFile
 
+test_empty :: Assertion
+test_empty = do
+  -- Regression test to make sure we only ask for input once in the case of
+  -- initially empty input. We previously asked for input twice before
+  -- returning the error.
+  let decomp = decompressIO zlibFormat defaultDecompressParams
+  case decomp of
+    DecompressInputRequired next -> do
+      decomp' <- next BS.empty
+      case decomp' of
+        DecompressStreamError TruncatedInput -> return ()
+        _ -> assertFailure "expected truncated error"
+
+    _ -> assertFailure "expected input"
 
 test_exception :: Assertion
 test_exception =

@@ -595,8 +595,14 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
                   else assert outputBufferFull $
                        Stream.inflateInit format bits
       case chunk of
-        _ | S.null chunk ->
-          fillBuffers 4  --always an error anyway
+        _ | S.null chunk -> do
+          -- special case to avoid demanding more input again
+          -- always an error anyway
+          when outputBufferFull $ do
+            let outChunkSize = 1
+            outFPtr <- Stream.unsafeLiftIO (S.mallocByteString outChunkSize)
+            Stream.pushOutputBuffer outFPtr 0 outChunkSize
+          drainBuffers True
 
         S.PS inFPtr offset length -> do
           Stream.pushInputBuffer inFPtr offset length
