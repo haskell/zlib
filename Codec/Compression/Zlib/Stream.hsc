@@ -4,7 +4,7 @@
 #endif
 -----------------------------------------------------------------------------
 -- |
--- Copyright   :  (c) 2006-2014 Duncan Coutts
+-- Copyright   :  (c) 2006-2015 Duncan Coutts
 -- License     :  BSD-style
 --
 -- Maintainer  :  duncan@community.haskell.org
