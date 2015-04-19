@@ -33,4 +33,5 @@ instance Arbitrary DecompressParams where
   arbitrary = return DecompressParams `ap` arbitrary
                                       `ap` arbitraryBufferSize
                                       `ap` return Nothing
+                                      `ap` arbitrary
 

@@ -28,7 +28,6 @@ import Prelude hiding (catch)
 #endif
 
 
-
 main :: IO ()
 main = defaultMain $
   testGroup "zlib tests" [
@@ -36,6 +35,9 @@ main = defaultMain $
       testProperty "decompress . compress = id (standard)"           prop_decompress_after_compress,
       testProperty "decompress . compress = id (Zlib -> GZipOrZLib)" prop_gziporzlib1,
       testProperty "decompress . compress = id (GZip -> GZipOrZlib)" prop_gziporzlib2,
+      testProperty "concatenated gzip members"                       prop_gzip_concat,
+      testProperty "multiple gzip members, boundaries (all 2-chunks)" prop_multiple_members_boundary2,
+      testProperty "multiple gzip members, boundaries (all 3-chunks)" prop_multiple_members_boundary3,
       testProperty "prefixes of valid stream detected as truncated"  prop_truncated
     ],
     testGroup "unit tests" [
@@ -46,6 +48,7 @@ main = defaultMain $
       testCase "dectect inflate with wrong dict"   test_wrong_dictionary,
       testCase "dectect inflate with right dict"   test_right_dictionary,
       testCase "handle trailing data"      test_trailing_data,
+      testCase "multiple gzip members"     test_multiple_members,
       testCase "check small input chunks"  test_small_chunks,
       testCase "check exception raised"    test_exception
     ]
@@ -82,6 +85,42 @@ prop_gziporzlib2 cp dp =
    decompressWindowBits dp >= compressWindowBits cp &&
    decompressBufferSize dp > 0 && compressBufferSize cp > 0 ==>
    liftM2 (==) (decompress gzipOrZlibFormat dp . compress gzipFormat cp) id
+
+prop_gzip_concat :: CompressParams
+                 -> DecompressParams
+                 -> BL.ByteString
+                 -> Property
+prop_gzip_concat cp dp input =
+   decompressWindowBits dp >= compressWindowBits cp &&
+   decompressBufferSize dp > 0 && compressBufferSize cp > 0 ==>
+   let catComp = BL.concat (replicate 5 (compress gzipFormat cp input))
+       compCat = compress gzipFormat cp (BL.concat (replicate 5 input))
+
+    in decompress gzipFormat dp { decompressAllMembers = True } catComp
+    == decompress gzipFormat dp { decompressAllMembers = True } compCat
+
+prop_multiple_members_boundary2 :: Property
+prop_multiple_members_boundary2 =
+    forAll shortStrings $ \bs ->
+      all (\c -> decomp c == BL.append bs bs)
+          (twoChunkSplits (comp bs `BL.append` comp bs))
+  where
+    comp   = compress gzipFormat defaultCompressParams
+    decomp = decompress gzipFormat defaultDecompressParams
+
+    shortStrings = fmap BL.pack $ listOf arbitrary
+
+prop_multiple_members_boundary3 :: Property
+prop_multiple_members_boundary3 =
+    forAll shortStrings $ \bs ->
+      all (\c -> decomp c == BL.append bs bs)
+          (threeChunkSplits (comp bs `BL.append` comp bs))
+  where
+    comp   = compress gzipFormat defaultCompressParams
+    decomp = decompress gzipFormat defaultDecompressParams
+
+    shortStrings = sized $ \sz -> resize (sz `div` 10) $
+                   fmap BL.pack $ listOf arbitrary
 
 prop_truncated :: Format -> Property
 prop_truncated format =
@@ -170,11 +209,26 @@ test_right_dictionary = do
 test_trailing_data :: Assertion
 test_trailing_data =
   withSampleData "two-files.gz" $ \hnd -> do
-    let decomp = decompressIO gzipFormat defaultDecompressParams
+    let decomp = decompressIO gzipFormat defaultDecompressParams {
+                   decompressAllMembers = False
+                 }
     chunks <- assertDecompressOkChunks hnd decomp
     case chunks of
       [chunk] -> chunk @?= BS.Char8.pack "Test 1"
       _       -> assertFailure "expected single chunk"
+
+test_multiple_members :: Assertion
+test_multiple_members =
+  withSampleData "two-files.gz" $ \hnd -> do
+    let decomp = decompressIO gzipFormat defaultDecompressParams {
+                   decompressAllMembers = True
+                 }
+    chunks <- assertDecompressOkChunks hnd decomp
+    case chunks of
+      [chunk1,
+       chunk2] -> do chunk1 @?= BS.Char8.pack "Test 1"
+                     chunk2 @?= BS.Char8.pack "Test 2"
+      _       -> assertFailure "expected two chunks"
 
 test_small_chunks :: Assertion
 test_small_chunks = do
@@ -190,9 +244,6 @@ test_small_chunks = do
   compressedFile   <- readSampleData "hello.gz"
   (GZip.decompress . smallChunks) compressedFile @?= GZip.decompress compressedFile
 
-  where
-    smallChunks :: BL.ByteString -> BL.ByteString
-    smallChunks = BL.fromChunks . map (\c -> BS.pack [c]) . BL.unpack
 
 test_exception :: Assertion
 test_exception =
@@ -211,6 +262,25 @@ toStrict = BL.toStrict
 #else
 toStrict = BS.concat . BL.toChunks
 #endif
+
+-----------------------
+-- Chunk boundary utils
+
+smallChunks :: BL.ByteString -> BL.ByteString
+smallChunks = BL.fromChunks . map (\c -> BS.pack [c]) . BL.unpack
+
+twoChunkSplits :: BL.ByteString -> [BL.ByteString]
+twoChunkSplits bs = zipWith (\a b -> BL.fromChunks [a,b]) (BS.inits sbs) (BS.tails sbs)
+  where
+    sbs = toStrict bs
+
+threeChunkSplits :: BL.ByteString -> [BL.ByteString]
+threeChunkSplits bs =
+    [ BL.fromChunks [a,b,c]
+    | (a,x) <- zip (BS.inits sbs) (BS.tails sbs)
+    , (b,c) <- zip (BS.inits x) (BS.tails x) ]
+  where
+    sbs = toStrict bs
 
 --------------
 -- HUnit Utils
