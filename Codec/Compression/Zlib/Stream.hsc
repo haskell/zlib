@@ -94,11 +94,15 @@ module Codec.Compression.Zlib.Stream (
 
   ) where
 
+-- Note we don't use the MIN_VERSION_* macros here for compatability with
+-- old Cabal versions that come with old GHC, that didn't provide these
+-- macros for .hsc files. So we use __GLASGOW_HASKELL__ as a proxy.
+
 import Foreign
          ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff
          , ForeignPtr, FinalizerPtr, mallocForeignPtrBytes, addForeignPtrFinalizer
          , withForeignPtr, touchForeignPtr, minusPtr )
-#if MIN_VERSION_base(4,4,0)
+#if __GLASGOW_HASKELL__ >= 702
 import Foreign.ForeignPtr.Unsafe ( unsafeForeignPtrToPtr )
 import System.IO.Unsafe          ( unsafePerformIO )
 #else
@@ -112,12 +116,12 @@ import Foreign.C
 import Data.ByteString.Internal (nullForeignPtr)
 import qualified Data.ByteString.Unsafe as B
 import Data.ByteString (ByteString)
-#if !(MIN_VERSION_base(4,8,0))
+#if !(__GLASGOW_HASKELL__ >= 710)
 import Control.Applicative (Applicative(..))
 #endif
 import Control.Monad (ap,liftM)
-#if MIN_VERSION_base(4,4,0)
-#if MIN_VERSION_base(4,7,0)
+#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 708
 import Control.Monad.ST.Strict
 #else
 import Control.Monad.ST.Strict hiding (unsafeIOToST)
