@@ -11,7 +11,6 @@ import Test.Codec.Compression.Zlib.Internal ()
 import Test.Codec.Compression.Zlib.Stream ()
 
 import Test.QuickCheck
-import Test.HUnit
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
