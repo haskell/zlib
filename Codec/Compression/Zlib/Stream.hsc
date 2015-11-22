@@ -362,14 +362,15 @@ instance Functor Stream where
   fmap   = liftM
 
 instance Applicative Stream where
-  pure   = return
+  pure   = returnZ
   (<*>)  = ap
+  (*>)   = thenZ_
 
 instance Monad Stream where
   (>>=)  = thenZ
 --  m >>= f = (m `thenZ` \a -> consistencyCheck `thenZ_` returnZ a) `thenZ` f
-  (>>)   = thenZ_
-  return = returnZ
+  (>>)   = (*>)
+  return = pure
   fail   = (finalise >>) . failZ
 
 returnZ :: a -> Stream a
