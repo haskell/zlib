@@ -36,6 +36,12 @@ source-repository head
   type: darcs
   location: http://code.haskell.org/zlib/
 
+flag non-blocking-ffi
+  default:     False
+  description: The (de)compression calls can sometimes take a long time, which
+               prevents other Haskell threads running. Enabling this flag
+               avoids this unfairness, but with greater overall cost.
+
 library
   exposed-modules: Codec.Compression.GZip,
                    Codec.Compression.Zlib,
@@ -57,6 +63,8 @@ library
     build-depends: ghc-prim
   includes:        zlib.h
   ghc-options:     -Wall -fwarn-tabs
+  if flag(non-blocking-ffi)
+    cpp-options:   -DNON_BLOCKING_FFI
   if !os(windows)
     -- Normally we use the the standard system zlib:
     extra-libraries: z

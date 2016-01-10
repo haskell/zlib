@@ -1009,6 +1009,12 @@ newtype StreamState = StreamState (Ptr StreamState)
 -- So we define c_inflateInit2 and c_deflateInit2 here as wrappers around
 -- their _ counterparts and pass the extra args.
 
+##ifdef NON_BLOCKING_FFI
+##define SAFTY safe
+##else
+##define SAFTY unsafe
+##endif
+
 foreign import ccall unsafe "zlib.h inflateInit2_"
   c_inflateInit2_ :: StreamState -> CInt -> Ptr CChar -> CInt -> IO CInt
 
@@ -1017,7 +1023,7 @@ c_inflateInit2 z n =
   withCAString #{const_str ZLIB_VERSION} $ \versionStr ->
     c_inflateInit2_ z n versionStr (#{const sizeof(z_stream)} :: CInt)
 
-foreign import ccall unsafe "zlib.h inflate"
+foreign import ccall SAFTY "zlib.h inflate"
   c_inflate :: StreamState -> CInt -> IO CInt
 
 foreign import ccall unsafe "zlib.h &inflateEnd"
@@ -1050,7 +1056,7 @@ foreign import ccall unsafe "zlib.h inflateSetDictionary"
                          -> CUInt
                          -> IO CInt
 
-foreign import ccall unsafe "zlib.h deflate"
+foreign import ccall SAFTY "zlib.h deflate"
   c_deflate :: StreamState -> CInt -> IO CInt
 
 foreign import ccall unsafe "zlib.h &deflateEnd"
