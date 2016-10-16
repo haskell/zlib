@@ -78,12 +78,14 @@ import Control.Monad (when)
 import Control.Exception (Exception, throw, assert)
 import Control.Monad.ST.Lazy hiding (stToIO)
 import Control.Monad.ST.Strict (stToIO)
+import Control.Monad.ST.Unsafe (unsafeIOToST)
 import Data.Typeable (Typeable)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
 import Data.Word (Word8)
+import GHC.IO (noDuplicate)
 
 import qualified Codec.Compression.Zlib.Stream as Stream
 import Codec.Compression.Zlib.Stream (Stream)
@@ -733,7 +735,7 @@ mkStateIO = stToIO Stream.mkState
 
 runStreamST :: Stream a -> Stream.State s -> ST s (a, Stream.State s)
 runStreamIO :: Stream a -> Stream.State RealWorld -> IO (a, Stream.State RealWorld)
-runStreamST strm zstate = strictToLazyST (Stream.runStream strm zstate)
+runStreamST strm zstate = strictToLazyST (unsafeIOToST noDuplicate >> Stream.runStream strm zstate)
 runStreamIO strm zstate = stToIO (Stream.runStream strm zstate)
 
 compressStreamIO :: Stream.Format -> CompressParams -> CompressStream IO
