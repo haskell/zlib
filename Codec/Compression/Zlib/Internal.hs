@@ -78,7 +78,11 @@ import Control.Monad (when)
 import Control.Exception (Exception, throw, assert)
 import Control.Monad.ST.Lazy hiding (stToIO)
 import Control.Monad.ST.Strict (stToIO)
-import Control.Monad.ST.Unsafe (unsafeIOToST)
+#if __GLASGOW_HASKELL__ >= 702
+import qualified Control.Monad.ST.Unsafe as Unsafe (unsafeIOToST)
+#else
+import qualified Control.Monad.ST.Strict as Unsafe (unsafeIOToST)
+#endif
 import Data.Typeable (Typeable)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Internal as L
@@ -735,7 +739,7 @@ mkStateIO = stToIO Stream.mkState
 
 runStreamST :: Stream a -> Stream.State s -> ST s (a, Stream.State s)
 runStreamIO :: Stream a -> Stream.State RealWorld -> IO (a, Stream.State RealWorld)
-runStreamST strm zstate = strictToLazyST (unsafeIOToST noDuplicate >> Stream.runStream strm zstate)
+runStreamST strm zstate = strictToLazyST (Unsafe.unsafeIOToST noDuplicate >> Stream.runStream strm zstate)
 runStreamIO strm zstate = stToIO (Stream.runStream strm zstate)
 
 compressStreamIO :: Stream.Format -> CompressParams -> CompressStream IO
