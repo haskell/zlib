@@ -5,13 +5,15 @@ license:         BSD3
 license-file:    LICENSE
 author:          Duncan Coutts <duncan@community.haskell.org>
 maintainer:      Duncan Coutts <duncan@community.haskell.org>
+bug-reports:     https://github.com/haskell/zlib/issues
 category:        Codec
 synopsis:        Compression and decompression in the gzip and zlib formats
 description:     This package provides a pure interface for compressing and 
                  decompressing streams of data represented as lazy 
-                 'ByteString's. It uses the zlib C library so it has high
-                 performance. It supports the \"zlib\", \"gzip\" and \"raw\"
-                 compression formats.
+                 'ByteString's. It uses the
+                 <https://en.wikipedia.org/wiki/Zlib zlib C library>
+                 so it has high performance. It supports the \"zlib\",
+                 \"gzip\" and \"raw\" compression formats.
                  .
                  It provides a convenient high level API suitable for most
                  tasks and for the few cases where more control is needed it
@@ -33,8 +35,8 @@ extra-source-files: changelog
                     examples/gzip.hs examples/gunzip.hs
 
 source-repository head
-  type: darcs
-  location: http://code.haskell.org/zlib/
+  type: git
+  location: https://github.com/haskell/zlib.git
 
 flag non-blocking-ffi
   default:     False
