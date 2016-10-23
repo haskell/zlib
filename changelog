@@ -1,3 +1,4 @@
+0.6.1.2 Herbert Valerio Riedel <hvr@gnu.org> October 2016
 
  * Fix a segfault when reading the stream multithreaded, #7
  * New experimental cabal flag 'non-blocking-ffi' for 'safe' ffi calls
