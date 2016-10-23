@@ -1,5 +1,6 @@
 
  * Fix a segfault when reading the stream multithreaded, #7
+ * New experimental cabal flag 'non-blocking-ffi' for 'safe' ffi calls
 
 0.6.1.1 Duncan Coutts <duncan@community.haskell.org> April 2015
 

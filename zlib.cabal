@@ -38,6 +38,7 @@ source-repository head
 
 flag non-blocking-ffi
   default:     False
+  manual:      True
   description: The (de)compression calls can sometimes take a long time, which
                prevents other Haskell threads running. Enabling this flag
                avoids this unfairness, but with greater overall cost.
