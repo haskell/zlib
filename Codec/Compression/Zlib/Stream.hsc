@@ -568,6 +568,7 @@ data Flush =
   | FullFlush
   | Finish
 --  | Block -- only available in zlib 1.2 and later, uncomment if you need it.
+   deriving (Show, Eq)
 
 fromFlush :: Flush -> CInt
 fromFlush NoFlush   = #{const Z_NO_FLUSH}

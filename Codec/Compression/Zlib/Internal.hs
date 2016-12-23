@@ -45,6 +45,7 @@ module Codec.Compression.Zlib.Internal (
   defaultCompressParams,
   DecompressParams(..),
   defaultDecompressParams,
+  Stream.Flush(..),
   Stream.Format(..),
     Stream.gzipFormat,
     Stream.zlibFormat,
@@ -111,7 +112,8 @@ data CompressParams = CompressParams {
   compressMemoryLevel :: !Stream.MemoryLevel,
   compressStrategy    :: !Stream.CompressionStrategy,
   compressBufferSize  :: !Int,
-  compressDictionary  :: Maybe S.ByteString
+  compressDictionary  :: Maybe S.ByteString,
+  compressFlush       :: !Stream.Flush
 } deriving Show
 
 -- | The full set of parameters for decompression. The defaults are
@@ -137,7 +139,8 @@ data DecompressParams = DecompressParams {
   decompressWindowBits :: !Stream.WindowBits,
   decompressBufferSize :: !Int,
   decompressDictionary :: Maybe S.ByteString,
-  decompressAllMembers :: Bool
+  decompressAllMembers :: Bool,
+  decompressFlush      :: !Stream.Flush
 } deriving Show
 
 -- | The default set of parameters for compression. This is typically used with
@@ -151,7 +154,8 @@ defaultCompressParams = CompressParams {
   compressMemoryLevel = Stream.defaultMemoryLevel,
   compressStrategy    = Stream.defaultStrategy,
   compressBufferSize  = defaultCompressBufferSize,
-  compressDictionary  = Nothing
+  compressDictionary  = Nothing,
+  compressFlush       = Stream.NoFlush
 }
 
 -- | The default set of parameters for decompression. This is typically used with
@@ -162,7 +166,8 @@ defaultDecompressParams = DecompressParams {
   decompressWindowBits = Stream.defaultWindowBits,
   decompressBufferSize = defaultDecompressBufferSize,
   decompressDictionary = Nothing,
-  decompressAllMembers = True
+  decompressAllMembers = True,
+  decompressFlush      = Stream.NoFlush
 }
 
 -- | The default chunk sizes for the output of compression and decompression
@@ -466,7 +471,7 @@ compressIO format params = compressStreamIO  format params
 compressStream :: Stream.Format -> CompressParams -> S.ByteString
                -> Stream (CompressStream Stream)
 compressStream format (CompressParams compLevel method bits memLevel
-                                strategy initChunkSize mdict) =
+                                strategy initChunkSize mdict flushStrategy) =
 
     \chunk -> do
       Stream.deflateInit format compLevel method bits memLevel strategy
@@ -526,13 +531,13 @@ compressStream format (CompressParams compLevel method bits memLevel
     -- this invariant guarantees we can always make forward progress
     -- and that therefore a BufferError is impossible
 
-    let flush = if lastChunk then Stream.Finish else Stream.NoFlush
+    let flush = if lastChunk then Stream.Finish else flushStrategy
     status <- Stream.deflate flush
 
     case status of
       Stream.Ok -> do
         outputBufferFull <- Stream.outputBufferFull
-        if outputBufferFull
+        if outputBufferFull || flushStrategy /= Stream.NoFlush
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   let chunk = S.PS outFPtr offset length
                   return $ CompressOutputAvailable chunk $ do
@@ -596,7 +601,7 @@ decompressIO format params = decompressStreamIO  format params
 decompressStream :: Stream.Format -> DecompressParams
                  -> Bool -> S.ByteString
                  -> Stream (DecompressStream Stream)
-decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
+decompressStream format (DecompressParams bits initChunkSize mdict allMembers flushStrategy)
                  resume =
 
     \chunk -> do
@@ -675,12 +680,12 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
     -- this invariant guarantees we can always make forward progress or at
     -- least if a BufferError does occur that it must be due to a premature EOF
 
-    status <- Stream.inflate Stream.NoFlush
+    status <- Stream.inflate flushStrategy
 
     case status of
       Stream.Ok -> do
         outputBufferFull <- Stream.outputBufferFull
-        if outputBufferFull
+        if outputBufferFull || flushStrategy /= Stream.NoFlush
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   let chunk = S.PS outFPtr offset length
                   return $ DecompressOutputAvailable chunk $ do
