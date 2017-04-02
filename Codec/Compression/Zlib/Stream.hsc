@@ -709,8 +709,8 @@ fromCompressionLevel (CompressionLevel n)
 -- usage.
 --
 -- The compression window size is the value of the the window bits raised to
--- the power 2. The window bits must be in the range @8..15@ which corresponds
--- to compression window sizes of 256b to 32Kb. The default is 15 which is also
+-- the power 2. The window bits must be in the range @9..15@ which corresponds
+-- to compression window sizes of 512b to 32Kb. The default is 15 which is also
 -- the maximum size.
 --
 -- The total amount of memory used depends on the window bits and the
@@ -737,19 +737,19 @@ data WindowBits = WindowBits Int
 defaultWindowBits :: WindowBits
 defaultWindowBits = WindowBits 15
 
--- | A specific compression window size, specified in bits in the range @8..15@
+-- | A specific compression window size, specified in bits in the range @9..15@
 --
 windowBits :: Int -> WindowBits
 windowBits n
-  | n >= 8 && n <= 15 = WindowBits n
-  | otherwise         = error "WindowBits must be in the range 8..15"
+  | n >= 9 && n <= 15 = WindowBits n
+  | otherwise         = error "WindowBits must be in the range 9..15"
 
 fromWindowBits :: Format -> WindowBits-> CInt
 fromWindowBits format bits = (formatModifier format) (checkWindowBits bits)
   where checkWindowBits DefaultWindowBits = 15
         checkWindowBits (WindowBits n)
-          | n >= 8 && n <= 15 = fromIntegral n
-          | otherwise         = error "WindowBits must be in the range 8..15"
+          | n >= 9 && n <= 15 = fromIntegral n
+          | otherwise         = error "WindowBits must be in the range 9..15"
         formatModifier Zlib       = id
         formatModifier GZip       = (+16)
         formatModifier GZipOrZlib = (+32)

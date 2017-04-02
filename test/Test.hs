@@ -61,10 +61,7 @@ prop_decompress_after_compress :: Format
                                -> Property
 prop_decompress_after_compress w cp dp =
    (w /= zlibFormat || decompressWindowBits dp >= compressWindowBits cp) &&
-   -- Zlib decompression has been observed to fail with both compress and decompress
-   -- window bits = 8. This seems to be contrary to the docs and to a quick reading
-   -- of the zlib source code.
-   (decompressWindowBits dp > compressWindowBits cp || decompressWindowBits dp > WindowBits 8) &&
+   (decompressWindowBits dp > compressWindowBits cp) &&
    decompressBufferSize dp > 0 && compressBufferSize cp > 0 ==>
    liftM2 (==) (decompress w dp . compress w cp) id
 

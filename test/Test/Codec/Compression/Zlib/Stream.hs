@@ -24,7 +24,7 @@ instance Arbitrary CompressionLevel where
 
 
 instance Arbitrary WindowBits where
-  arbitrary = elements $ defaultWindowBits:map windowBits [8..15]
+  arbitrary = elements $ defaultWindowBits:map windowBits [9..15]
 
 
 instance Arbitrary MemoryLevel where
