@@ -54,7 +54,7 @@ module Codec.Compression.Zlib.Stream (
     filteredStrategy,
     huffmanOnlyStrategy,
 
-  -- * The buisness
+  -- * The business
   deflate,
   inflate,
   Status(..),
@@ -716,6 +716,18 @@ fromCompressionLevel (CompressionLevel n)
 -- The total amount of memory used depends on the window bits and the
 -- 'MemoryLevel'. See the 'MemoryLevel' for the details.
 --
+-- Window bits can also be @-8..-15@ for raw deflate. In this case, its
+-- negated value determines the window size. 'deflate' will then generate
+-- raw deflate data with no zlib header or trailer, and will not compute an
+-- adler32 check value.
+--
+-- Window bits can also be greater than @15@ for optional gzip encoding. Add
+-- @16@ to window bits value to write a simple gzip header and trailer
+-- around the compressed data instead of a zlib wrapper. The gzip header
+-- will have no file name, no extra data, no comment, no modification time
+-- (set to zero), no header crc, and the operating system will be set to 255
+-- (unknown).
+
 data WindowBits = WindowBits Int
                 | DefaultWindowBits -- This constructor must be last to make
                                     -- the Ord instance work. The Ord instance
