@@ -2,6 +2,9 @@
 #if __GLASGOW_HASKELL__ >= 702
 {-# LANGUAGE DeriveGeneric #-}
 #endif
+#if __GLASGOW_HASKELL__ >= 706
+{-# LANGUAGE CApiFFI #-}
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) 2006-2015 Duncan Coutts
@@ -1008,6 +1011,10 @@ newtype StreamState = StreamState (Ptr StreamState)
 --
 -- So we define c_inflateInit2 and c_deflateInit2 here as wrappers around
 -- their _ counterparts and pass the extra args.
+--
+-- As of GHC 7.6, we can import macros directly using the CApiFFI extension.
+-- This avoids the need for the hsc2hs #{const_str} construct, which means
+-- hsc2hs can run in cross-compilation mode.
 
 ##ifdef NON_BLOCKING_FFI
 ##define SAFTY safe
@@ -1015,6 +1022,14 @@ newtype StreamState = StreamState (Ptr StreamState)
 ##define SAFTY unsafe
 ##endif
 
+#if __GLASGOW_HASKELL__ >= 706
+foreign import capi unsafe "zlib.h inflateInit2"
+  c_inflateInit2 :: StreamState -> CInt -> IO CInt
+ 
+foreign import capi unsafe "zlib.h deflateInit2"
+  c_deflateInit2 :: StreamState
+                 -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
+#else
 foreign import ccall unsafe "zlib.h inflateInit2_"
   c_inflateInit2_ :: StreamState -> CInt -> Ptr CChar -> CInt -> IO CInt
 
@@ -1022,15 +1037,6 @@ c_inflateInit2 :: StreamState -> CInt -> IO CInt
 c_inflateInit2 z n =
   withCAString #{const_str ZLIB_VERSION} $ \versionStr ->
     c_inflateInit2_ z n versionStr (#{const sizeof(z_stream)} :: CInt)
-
-foreign import ccall SAFTY "zlib.h inflate"
-  c_inflate :: StreamState -> CInt -> IO CInt
-
-foreign import ccall unsafe "zlib.h &inflateEnd"
-  c_inflateEnd :: FinalizerPtr StreamState
-
-foreign import ccall unsafe "zlib.h inflateReset"
-  c_inflateReset :: StreamState -> IO CInt
 
 foreign import ccall unsafe "zlib.h deflateInit2_"
   c_deflateInit2_ :: StreamState
@@ -1043,6 +1049,16 @@ c_deflateInit2 :: StreamState
 c_deflateInit2 z a b c d e =
   withCAString #{const_str ZLIB_VERSION} $ \versionStr ->
     c_deflateInit2_ z a b c d e versionStr (#{const sizeof(z_stream)} :: CInt)
+#endif
+
+foreign import ccall SAFTY "zlib.h inflate"
+  c_inflate :: StreamState -> CInt -> IO CInt
+
+foreign import ccall unsafe "zlib.h &inflateEnd"
+  c_inflateEnd :: FinalizerPtr StreamState
+
+foreign import ccall unsafe "zlib.h inflateReset"
+  c_inflateReset :: StreamState -> IO CInt
 
 foreign import ccall unsafe "zlib.h deflateSetDictionary"
   c_deflateSetDictionary :: StreamState
