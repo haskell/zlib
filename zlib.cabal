@@ -45,6 +45,11 @@ flag non-blocking-ffi
                prevents other Haskell threads running. Enabling this flag
                avoids this unfairness, but with greater overall cost.
 
+flag use-pkg-config
+  default:     False
+  manual:      True
+  description: Use pkg-config to find foreign zlib.
+
 library
   exposed-modules: Codec.Compression.GZip,
                    Codec.Compression.Zlib,
@@ -70,7 +75,10 @@ library
     cpp-options:   -DNON_BLOCKING_FFI
   if !os(windows)
     -- Normally we use the the standard system zlib:
-    extra-libraries: z
+    if !flag(use-pkg-config)
+      extra-libraries: z
+    else
+      pkgconfig-depends: zlib
   else
     -- However for the benefit of users of Windows (which does not have zlib
     -- by default) we bundle a complete copy of the C sources of zlib-1.2.8
