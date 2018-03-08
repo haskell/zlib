@@ -45,6 +45,11 @@ flag non-blocking-ffi
                prevents other Haskell threads running. Enabling this flag
                avoids this unfairness, but with greater overall cost.
 
+flag pkg-config
+  default:     False
+  manual:      True
+  description: Use @pkg-config(1)@ to locate foreign @zlib@ library.
+
 library
   exposed-modules: Codec.Compression.GZip,
                    Codec.Compression.Zlib,
@@ -68,18 +73,23 @@ library
   ghc-options:     -Wall -fwarn-tabs
   if flag(non-blocking-ffi)
     cpp-options:   -DNON_BLOCKING_FFI
-  if !os(windows)
-    -- Normally we use the the standard system zlib:
-    extra-libraries: z
+  if flag(pkg-config)
+    -- NB: pkg-config is available on windows as well when using msys2
+    pkgconfig-depends: zlib
   else
-    -- However for the benefit of users of Windows (which does not have zlib
-    -- by default) we bundle a complete copy of the C sources of zlib-1.2.8
-    c-sources:     cbits/adler32.c cbits/compress.c cbits/crc32.c
+    -- don't use pkg-config
+    if !os(windows)
+      -- Normally we use the the standard system zlib.
+      extra-libraries: z
+    else
+      -- However for the benefit of users of Windows (which does not have zlib
+      -- by default) we bundle a complete copy of the C sources of zlib-1.2.8
+      c-sources:   cbits/adler32.c cbits/compress.c cbits/crc32.c
                    cbits/deflate.c cbits/infback.c
                    cbits/inffast.c cbits/inflate.c cbits/inftrees.c
                    cbits/trees.c cbits/uncompr.c cbits/zutil.c
-    include-dirs:  cbits
-    install-includes: zlib.h zconf.h
+      include-dirs:  cbits
+      install-includes: zlib.h zconf.h
 
 test-suite tests
   type: exitcode-stdio-1.0
