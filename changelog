@@ -1,3 +1,9 @@
+0.6.2 Herbert Valerio Riedel <hvr@gnu.org> March 2018
+
+ * New cabal flag 'pkg-config' for discovering 'zlib` via pkg-config(1) (#16)
+ * Use CApiFFI where available for cross-compile friendliness (#14)
+ * Change the window bits range from 8..15 to 9..15 (#11)
+
 0.6.1.2 Herbert Valerio Riedel <hvr@gnu.org> October 2016
 
  * Fix a segfault when reading the stream multithreaded, #7
