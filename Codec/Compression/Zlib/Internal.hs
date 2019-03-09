@@ -17,6 +17,7 @@ module Codec.Compression.Zlib.Internal (
   -- * Pure interface
   compress,
   decompress,
+  safeDecompress,
 
   -- * Monadic incremental interface
   -- $incremental-compression
@@ -586,11 +587,23 @@ decompressST :: Stream.Format -> DecompressParams -> DecompressStream (ST s)
 --
 decompressIO :: Stream.Format -> DecompressParams -> DecompressStream IO
 
-decompress   format params = foldDecompressStreamWithInput
-                               L.Chunk (const L.Empty) throw
-                               (decompressStreamST format params)
+decompress   format params = either throw id . safeDecompress format params
 decompressST format params = decompressStreamST  format params
 decompressIO format params = decompressStreamIO  format params
+
+
+-- | Like 'decompress' except that it returns the 'DecompressError' instead of
+-- throwing it.
+safeDecompress
+  :: Stream.Format
+  -> DecompressParams
+  -> L.ByteString
+  -> Either DecompressError L.ByteString
+safeDecompress format params = foldDecompressStreamWithInput
+  (fmap . L.Chunk)
+  (const $ Right L.Empty)
+  Left
+  (decompressStreamST format params)
 
 
 decompressStream :: Stream.Format -> DecompressParams
