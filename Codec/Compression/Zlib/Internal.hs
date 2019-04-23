@@ -18,6 +18,7 @@ module Codec.Compression.Zlib.Internal (
   compress,
   decompress,
   safeDecompress,
+  Chunks(..),
 
   -- * Monadic incremental interface
   -- $incremental-compression
@@ -587,7 +588,7 @@ decompressST :: Stream.Format -> DecompressParams -> DecompressStream (ST s)
 --
 decompressIO :: Stream.Format -> DecompressParams -> DecompressStream IO
 
-decompress   format params = either throw id . safeDecompress format params
+decompress   format params = unsafeFromChunks . safeDecompress format params
 decompressST format params = decompressStreamST  format params
 decompressIO format params = decompressStreamIO  format params
 
@@ -598,12 +599,25 @@ safeDecompress
   :: Stream.Format
   -> DecompressParams
   -> L.ByteString
-  -> Either DecompressError L.ByteString
+  -> Chunks L.ByteString DecompressError
 safeDecompress format params = foldDecompressStreamWithInput
-  (fmap . L.Chunk)
-  (const $ Right L.Empty)
-  Left
+  (Next . L.fromStrict)
+  (flip Next Done)
+  Fail
   (decompressStreamST format params)
+
+
+data Chunks next fail
+  = Next next (Chunks next fail)
+  | Done
+  | Fail fail
+  deriving (Eq, Show)
+
+unsafeFromChunks :: (Monoid next, Exception fail) => Chunks next fail -> next
+unsafeFromChunks xs = case xs of
+  Next x ys -> x <> unsafeFromChunks ys
+  Done -> mempty
+  Fail x -> throw x
 
 
 decompressStream :: Stream.Format -> DecompressParams
@@ -915,7 +929,7 @@ decompressStreamST format params =
 
 
     tryFollowingStream :: S.ByteString -> Stream.State s -> ST s (DecompressStream (ST s))
-    tryFollowingStream chunk zstate = 
+    tryFollowingStream chunk zstate =
       case S.length chunk of
       0 -> return $ DecompressInputRequired $ \chunk' -> case S.length chunk' of
          0 -> finaliseStreamEnd S.empty zstate
