@@ -141,6 +141,7 @@ import GHC.Generics (Generic)
 #ifdef DEBUG
 import System.IO (hPutStrLn, stderr)
 #endif
+import qualified Control.Monad.Fail as Fail
 
 import Prelude hiding (length)
 
@@ -374,6 +375,12 @@ instance Monad Stream where
 --  m >>= f = (m `thenZ` \a -> consistencyCheck `thenZ_` returnZ a) `thenZ` f
   (>>)   = (*>)
   return = pure
+
+#if !MIN_VERSION_base(4,13,0)
+  fail = Fail.fail
+#endif
+
+instance Fail.MonadFail Stream where
   fail   = (finalise >>) . failZ
 
 returnZ :: a -> Stream a
