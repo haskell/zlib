@@ -1,3 +1,7 @@
+0.6.2.1 TBD
+
+* Add support for GHC 8.8 / base-4.13
+
 0.6.2 Herbert Valerio Riedel <hvr@gnu.org> March 2018
 
  * New cabal flag 'pkg-config' for discovering 'zlib` via pkg-config(1) (#16)
