@@ -10,8 +10,8 @@ maintainer:      Duncan Coutts <duncan@community.haskell.org>
 bug-reports:     https://github.com/haskell/zlib/issues
 category:        Codec
 synopsis:        Compression and decompression in the gzip and zlib formats
-description:     This package provides a pure interface for compressing and 
-                 decompressing streams of data represented as lazy 
+description:     This package provides a pure interface for compressing and
+                 decompressing streams of data represented as lazy
                  'ByteString's. It uses the
                  <https://en.wikipedia.org/wiki/Zlib zlib C library>
                  so it has high performance. It supports the \"zlib\",
@@ -76,12 +76,12 @@ library
   ghc-options:     -Wall -fwarn-tabs
   if flag(non-blocking-ffi)
     cpp-options:   -DNON_BLOCKING_FFI
-  if flag(pkg-config)
+  if flag(pkg-config) && !impl(ghcjs) && !os(ghcjs)
     -- NB: pkg-config is available on windows as well when using msys2
     pkgconfig-depends: zlib
   else
     -- don't use pkg-config
-    if !os(windows)
+    if !os(windows) && !impl(ghcjs) && !os(ghcjs)
       -- Normally we use the the standard system zlib.
       extra-libraries: z
     else
