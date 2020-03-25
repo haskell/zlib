@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-
+{-# LANGUAGE RankNTypes #-}
 module Main where
 
 import Codec.Compression.Zlib.Internal
@@ -17,6 +17,7 @@ import Test.Tasty.HUnit
 import Utils ()
 
 import Control.Monad
+import Control.Monad.ST.Lazy (ST)
 import Control.Exception
 import qualified Data.ByteString.Char8 as BS.Char8
 import qualified Data.ByteString.Lazy as BL
@@ -129,6 +130,7 @@ prop_truncated format =
   where
     comp   = compress format defaultCompressParams
     decomp = decompressST format defaultDecompressParams
+    truncated :: (forall s. DecompressStream (ST s)) -> BL.ByteString -> Bool
     truncated = foldDecompressStreamWithInput (\_ r -> r) (\_ -> False)
                   (\err -> case err of TruncatedInput -> True; _ -> False)
 
