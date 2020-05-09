@@ -51,6 +51,12 @@ flag pkg-config
   manual:      True
   description: Use @pkg-config(1)@ to locate foreign @zlib@ library.
 
+flag static
+  default:     False
+  manual:      True
+  description: Use the bundled sources. Requires pkg-config to be False. For windows, this is the default.
+
+
 library
   exposed-modules: Codec.Compression.GZip,
                    Codec.Compression.Zlib,
@@ -81,7 +87,7 @@ library
     pkgconfig-depends: zlib
   else
     -- don't use pkg-config
-    if !os(windows)
+    if !os(windows) && !flag(static)
       -- Normally we use the the standard system zlib.
       extra-libraries: z
     else
