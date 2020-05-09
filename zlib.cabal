@@ -1,6 +1,6 @@
 cabal-version:   >= 1.10
 name:            zlib
-version:         0.6.2.1
+version:         0.6.2.2
 
 copyright:       (c) 2006-2016 Duncan Coutts
 license:         BSD3
@@ -86,7 +86,7 @@ library
       extra-libraries: z
     else
       -- However for the benefit of users of Windows (which does not have zlib
-      -- by default) we bundle a complete copy of the C sources of zlib-1.2.8
+      -- by default) we bundle a complete copy of the C sources of zlib-1.2.11
       c-sources:   cbits/adler32.c cbits/compress.c cbits/crc32.c
                    cbits/deflate.c cbits/infback.c
                    cbits/inffast.c cbits/inflate.c cbits/inftrees.c
