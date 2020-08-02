@@ -51,6 +51,13 @@ flag pkg-config
   manual:      True
   description: Use @pkg-config(1)@ to locate foreign @zlib@ library.
 
+flag bundled-c-zlib
+  default:     False
+  manual:      True
+  description: Use the bundled zlib C sources. Requires pkg-config to be False.
+               For windows, this is the default.
+
+
 library
   exposed-modules: Codec.Compression.GZip,
                    Codec.Compression.Zlib,
@@ -81,7 +88,7 @@ library
     pkgconfig-depends: zlib
   else
     -- don't use pkg-config
-    if !os(windows) && !impl(ghcjs) && !os(ghcjs)
+    if !os(windows) && !flag(bundled-c-zlib) && !impl(ghcjs) && !os(ghcjs)
       -- Normally we use the the standard system zlib.
       extra-libraries: z
     else
