@@ -22,6 +22,9 @@ import Control.Exception
 import qualified Data.ByteString.Char8 as BS.Char8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString      as BS
+#if !MIN_VERSION_bytestring(0,11,0)
+import qualified Data.ByteString.Internal as BS
+#endif
 import System.IO
 #if !(MIN_VERSION_base(4,6,0))
 import Prelude hiding (catch)
@@ -38,7 +41,8 @@ main = defaultMain $
       testProperty "concatenated gzip members"                       prop_gzip_concat,
       testProperty "multiple gzip members, boundaries (all 2-chunks)" prop_multiple_members_boundary2,
       testProperty "multiple gzip members, boundaries (all 3-chunks)" prop_multiple_members_boundary3,
-      testProperty "prefixes of valid stream detected as truncated"  prop_truncated
+      testProperty "prefixes of valid stream detected as truncated"  prop_truncated,
+      testProperty "compress works with BSes with non-zero offset"   prop_compress_nonzero_bs_offset
     ],
     testGroup "unit tests" [
       testCase "simple gzip case"          test_simple_gzip,
@@ -135,6 +139,23 @@ prop_truncated format =
                   (\err -> case err of TruncatedInput -> True; _ -> False)
 
     shortStrings = sized $ \sz -> resize (sz `div` 6) arbitrary
+
+prop_compress_nonzero_bs_offset :: BS.ByteString
+                                -> Int
+                                -> Property
+prop_compress_nonzero_bs_offset original to_drop =
+   to_drop > 0 &&
+   BS.length original > to_drop ==>
+   let input = BS.drop to_drop original
+#if MIN_VERSION_bytestring(0,11,0)
+       dropped = to_drop
+#else
+       (BS.PS _ptr dropped _length) = input
+#endif
+       input' = BL.pack $ BS.unpack input -- BL.fromStrict is only available since bytestring-0.10.4.0
+       compressed = compress gzipFormat defaultCompressParams input'
+       decompressed = decompress gzipFormat defaultDecompressParams compressed
+   in  dropped == to_drop && decompressed == input'
 
 
 test_simple_gzip :: Assertion

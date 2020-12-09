@@ -92,6 +92,7 @@ import Data.Word (Word8)
 import GHC.IO (noDuplicate)
 
 import qualified Codec.Compression.Zlib.Stream as Stream
+import Codec.Compression.Zlib.ByteStringCompat (mkBS, withBS)
 import Codec.Compression.Zlib.Stream (Stream)
 
 -- | The full set of parameters for compression. The defaults are
@@ -471,13 +472,12 @@ compressStream format (CompressParams compLevel method bits memLevel
     \chunk -> do
       Stream.deflateInit format compLevel method bits memLevel strategy
       setDictionary mdict
-      case chunk of
-        _ | S.null chunk ->
-          fillBuffers 20   --gzip header is 20 bytes, others even smaller
-
-        S.PS inFPtr offset length -> do
-          Stream.pushInputBuffer inFPtr offset length
-          fillBuffers initChunkSize
+      withBS chunk $ \inFPtr length ->
+        if length == 0
+          then fillBuffers 20   --gzip header is 20 bytes, others even smaller
+          else do
+            Stream.pushInputBuffer inFPtr 0 length
+            fillBuffers initChunkSize
 
   where
     -- we flick between two states:
@@ -507,11 +507,11 @@ compressStream format (CompressParams compLevel method bits memLevel
       Stream.pushOutputBuffer outFPtr 0 outChunkSize
 
     if inputBufferEmpty
-      then return $ CompressInputRequired $ \chunk ->
-           case chunk of
-             _ | S.null chunk          -> drainBuffers True
-             S.PS inFPtr offset length -> do
-                Stream.pushInputBuffer inFPtr offset length
+      then return $ CompressInputRequired $ flip withBS $ \inFPtr length ->
+           if length == 0
+             then drainBuffers True
+             else do
+                Stream.pushInputBuffer inFPtr 0 length
                 drainBuffers False
       else drainBuffers False
 
@@ -534,7 +534,7 @@ compressStream format (CompressParams compLevel method bits memLevel
         outputBufferFull <- Stream.outputBufferFull
         if outputBufferFull
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
-                  let chunk = S.PS outFPtr offset length
+                  let chunk = mkBS outFPtr offset length
                   return $ CompressOutputAvailable chunk $ do
                     fillBuffers defaultCompressBufferSize
           else do fillBuffers defaultCompressBufferSize
@@ -545,7 +545,7 @@ compressStream format (CompressParams compLevel method bits memLevel
         outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
         if outputBufferBytesAvailable > 0
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
-                  let chunk = S.PS outFPtr offset length
+                  let chunk = mkBS outFPtr offset length
                   Stream.finalise
                   return $ CompressOutputAvailable chunk (return CompressStreamEnd)
           else do Stream.finalise
@@ -607,25 +607,25 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
                        Stream.inflateReset
                   else assert outputBufferFull $
                        Stream.inflateInit format bits
-      case chunk of
-        _ | S.null chunk -> do
-          -- special case to avoid demanding more input again
-          -- always an error anyway
-          when outputBufferFull $ do
-            let outChunkSize = 1
-            outFPtr <- Stream.unsafeLiftIO (S.mallocByteString outChunkSize)
-            Stream.pushOutputBuffer outFPtr 0 outChunkSize
-          drainBuffers True
-
-        S.PS inFPtr offset length -> do
-          Stream.pushInputBuffer inFPtr offset length
-          -- Normally we start with no output buffer (so counts as full) but
-          -- if we're resuming then we'll usually still have output buffer
-          -- space available
-          assert (if not resume then outputBufferFull else True) $ return ()
-          if outputBufferFull
-            then fillBuffers initChunkSize
-            else drainBuffers False
+      withBS chunk $ \inFPtr length ->
+        if length == 0
+          then do
+            -- special case to avoid demanding more input again
+            -- always an error anyway
+            when outputBufferFull $ do
+              let outChunkSize = 1
+              outFPtr <- Stream.unsafeLiftIO (S.mallocByteString outChunkSize)
+              Stream.pushOutputBuffer outFPtr 0 outChunkSize
+            drainBuffers True
+          else do
+            Stream.pushInputBuffer inFPtr 0 length
+            -- Normally we start with no output buffer (so counts as full) but
+            -- if we're resuming then we'll usually still have output buffer
+            -- space available
+            assert (if not resume then outputBufferFull else True) $ return ()
+            if outputBufferFull
+              then fillBuffers initChunkSize
+              else drainBuffers False
 
   where
     -- we flick between two states:
@@ -657,11 +657,12 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
 
     if inputBufferEmpty
       then return $ DecompressInputRequired $ \chunk ->
-           case chunk of
-             _ | S.null chunk          -> drainBuffers True
-             S.PS inFPtr offset length -> do
-                Stream.pushInputBuffer inFPtr offset length
-                drainBuffers False
+           withBS chunk $ \inFPtr length ->
+             if length == 0
+               then drainBuffers True
+               else do
+                 Stream.pushInputBuffer inFPtr 0 length
+                 drainBuffers False
       else drainBuffers False
 
 
@@ -682,7 +683,7 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
         outputBufferFull <- Stream.outputBufferFull
         if outputBufferFull
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
-                  let chunk = S.PS outFPtr offset length
+                  let chunk = mkBS outFPtr offset length
                   return $ DecompressOutputAvailable chunk $ do
                     fillBuffers defaultDecompressBufferSize
           else do fillBuffers defaultDecompressBufferSize
@@ -695,7 +696,7 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
         if inputBufferEmpty
           then do finish (DecompressStreamEnd S.empty)
           else do (inFPtr, offset, length) <- Stream.popRemainingInputBuffer
-                  let inchunk = S.PS inFPtr offset length
+                  let inchunk = mkBS inFPtr offset length
                   finish (DecompressStreamEnd inchunk)
 
       Stream.Error code msg -> case code of
@@ -714,7 +715,7 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
     outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
     if outputBufferBytesAvailable > 0
       then do (outFPtr, offset, length) <- Stream.popOutputBuffer
-              return (DecompressOutputAvailable (S.PS outFPtr offset length) (return end))
+              return (DecompressOutputAvailable (mkBS outFPtr offset length) (return end))
       else return end
 
   setDictionary :: Stream.DictionaryHash -> Maybe S.ByteString
@@ -902,7 +903,7 @@ decompressStreamST format params =
 
 
     tryFollowingStream :: S.ByteString -> Stream.State s -> ST s (DecompressStream (ST s))
-    tryFollowingStream chunk zstate = 
+    tryFollowingStream chunk zstate =
       case S.length chunk of
       0 -> return $ DecompressInputRequired $ \chunk' -> case S.length chunk' of
          0 -> finaliseStreamEnd S.empty zstate
