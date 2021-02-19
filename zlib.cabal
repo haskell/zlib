@@ -1,6 +1,6 @@
 cabal-version:   >= 1.10
 name:            zlib
-version:         0.6.2.2
+version:         0.6.2.3
 
 copyright:       (c) 2006-2016 Duncan Coutts
 license:         BSD3
