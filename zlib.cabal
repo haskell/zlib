@@ -21,7 +21,19 @@ description:     This package provides a pure interface for compressing and
                  tasks and for the few cases where more control is needed it
                  provides access to the full zlib feature set.
 build-type:      Simple
-tested-with:     GHC ==7.0.4, GHC ==7.2.2, GHC ==7.4.2, GHC ==7.6.3, GHC ==7.8.4, GHC ==7.10.3, GHC ==8.0.1, GHC==8.0.2, GHC ==8.2.2, GHC ==8.4.4, GHC==8.6.5, GHC==8.8.3, GHC==8.10.1
+
+tested-with:     GHC == 7.0.4
+               , GHC == 7.2.2
+               , GHC == 7.4.2
+               , GHC == 7.6.3
+               , GHC == 7.8.4
+               , GHC == 7.10.3
+               , GHC == 8.0.2
+               , GHC == 8.2.2
+               , GHC == 8.4.4
+               , GHC == 8.6.5
+               , GHC == 8.8.4
+               , GHC == 8.10.3
 
 extra-source-files: changelog
                     -- zlib C sources (for Windows)
@@ -65,21 +77,25 @@ library
                    Codec.Compression.Zlib.Internal
   other-modules:   Codec.Compression.Zlib.Stream,
                    Codec.Compression.Zlib.ByteStringCompat
+
   if impl(ghc < 7)
     default-language: Haskell98
     default-extensions: PatternGuards
   else
     default-language: Haskell2010
+
   other-extensions: CPP, ForeignFunctionInterface, RankNTypes, BangPatterns,
                     DeriveDataTypeable
   if impl(ghc >= 7.2)
     other-extensions: DeriveGeneric
   if impl(ghc >= 7.6)
     other-extensions: CApiFFI
+
   build-depends:   base >= 4 && < 4.16,
                    bytestring >= 0.9 && < 0.12
   if impl(ghc >= 7.0 && < 8.0.3)
     build-depends: ghc-prim
+
   includes:        zlib.h
   ghc-options:     -Wall -fwarn-tabs
   if flag(non-blocking-ffi)
