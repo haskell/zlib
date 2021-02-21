@@ -6,7 +6,7 @@ copyright:       (c) 2006-2016 Duncan Coutts
 license:         BSD3
 license-file:    LICENSE
 author:          Duncan Coutts <duncan@community.haskell.org>
-maintainer:      Duncan Coutts <duncan@community.haskell.org>
+maintainer:      Duncan Coutts <duncan@community.haskell.org>, Andrew Lelechenko <andrew.lelechenko@gmail.com>, Emily Pillmore <emilypi@cohomolo.gy>, Herbert Valerio Riedel <hvr@gnu.org>
 bug-reports:     https://github.com/haskell/zlib/issues
 category:        Codec
 synopsis:        Compression and decompression in the gzip and zlib formats
