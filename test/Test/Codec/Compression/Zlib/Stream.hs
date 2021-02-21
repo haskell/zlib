@@ -16,6 +16,9 @@ instance Arbitrary Format where
 instance Arbitrary Method where
    arbitrary = return deflateMethod
 
+instance Arbitrary Flush where
+   arbitrary = elements [NoFlush]
+     -- SyncFlush, Finish, FullFlush
 
 instance Arbitrary CompressionLevel where
   arbitrary = elements $ [defaultCompression, noCompression,

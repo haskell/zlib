@@ -16,6 +16,7 @@ instance Arbitrary CompressParams where
                                     `ap` arbitrary `ap` arbitrary
                                     `ap` arbitrary `ap` arbitraryBufferSize
                                     `ap` return Nothing
+                                    `ap` arbitrary
 
 arbitraryBufferSize :: Gen Int
 arbitraryBufferSize = frequency $ [(10, return n) | n <- [1..1024]] ++
@@ -28,5 +29,6 @@ instance Arbitrary DecompressParams where
   arbitrary = return DecompressParams `ap` arbitrary
                                       `ap` arbitraryBufferSize
                                       `ap` return Nothing
+                                      `ap` arbitrary
                                       `ap` arbitrary
 
