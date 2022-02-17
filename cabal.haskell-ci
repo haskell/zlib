@@ -1,0 +1,2 @@
+apt: zlib1g-dev
+tests: >= 7.4
