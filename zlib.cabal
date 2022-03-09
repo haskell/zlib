@@ -38,6 +38,7 @@ tested-with:     GHC == 7.0.4
                , GHC == 9.2.1
 
 extra-source-files: changelog
+                    README.md
                     -- zlib C sources (for Windows)
                     cbits/crc32.h cbits/inffast.h cbits/inflate.h
                     cbits/trees.h cbits/deflate.h cbits/inffixed.h
