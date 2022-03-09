@@ -10,10 +10,8 @@ import qualified Codec.Compression.Zlib.Raw as Raw
 import Test.Codec.Compression.Zlib.Internal ()
 import Test.Codec.Compression.Zlib.Stream ()
 
-import Test.QuickCheck
 import Test.Tasty
 import Test.Tasty.QuickCheck
-import Test.Tasty.HUnit
 import Utils ()
 
 import Control.Monad
@@ -45,17 +43,17 @@ main = defaultMain $
       testProperty "compress works with BSes with non-zero offset"   prop_compress_nonzero_bs_offset
     ],
     testGroup "unit tests" [
-      testCase "simple gzip case"          test_simple_gzip,
-      testCase "detect bad crc"            test_bad_crc,
-      testCase "detect non-gzip"           test_non_gzip,
-      testCase "detect custom dictionary"  test_custom_dict,
-      testCase "dectect inflate with wrong dict"   test_wrong_dictionary,
-      testCase "dectect inflate with right dict"   test_right_dictionary,
-      testCase "handle trailing data"      test_trailing_data,
-      testCase "multiple gzip members"     test_multiple_members,
-      testCase "check small input chunks"  test_small_chunks,
-      testCase "check empty input"         test_empty,
-      testCase "check exception raised"    test_exception
+      testProperty "simple gzip case"          test_simple_gzip,
+      testProperty "detect bad crc"            test_bad_crc,
+      testProperty "detect non-gzip"           test_non_gzip,
+      testProperty "detect custom dictionary"  test_custom_dict,
+      testProperty "dectect inflate with wrong dict"   test_wrong_dictionary,
+      testProperty "dectect inflate with right dict"   test_right_dictionary,
+      testProperty "handle trailing data"      test_trailing_data,
+      testProperty "multiple gzip members"     test_multiple_members,
+      testProperty "check small input chunks"  test_small_chunks,
+      testProperty "check empty input"         test_empty,
+      testProperty "check exception raised"    test_exception
     ]
   ]
 
@@ -158,66 +156,55 @@ prop_compress_nonzero_bs_offset original to_drop =
    in  dropped == to_drop && decompressed == input'
 
 
-test_simple_gzip :: Assertion
-test_simple_gzip =
+test_simple_gzip :: Property
+test_simple_gzip = ioProperty $
   withSampleData "hello.gz" $ \hnd ->
     let decomp = decompressIO gzipFormat defaultDecompressParams
      in assertDecompressOk hnd decomp
 
-test_bad_crc :: Assertion
-test_bad_crc =
+test_bad_crc :: Property
+test_bad_crc = ioProperty $
   withSampleData "bad-crc.gz" $ \hnd -> do
     let decomp = decompressIO gzipFormat defaultDecompressParams
-    err <- assertDecompressError hnd decomp
-    msg <- assertDataFormatError err
-    msg @?= "incorrect data check"
+    assertDecompressError hnd (assertDataFormatError "incorrect data check") decomp
 
-test_non_gzip :: Assertion
-test_non_gzip = do
-  withSampleData "not-gzip" $ \hnd -> do
+test_non_gzip :: Property
+test_non_gzip = conjoin
+  [ ioProperty $ withSampleData "not-gzip" $ \hnd -> do
     let decomp = decompressIO gzipFormat defaultDecompressParams
-    err <- assertDecompressError hnd decomp
-    msg <- assertDataFormatError err
-    msg @?= "incorrect header check"
+    assertDecompressError hnd (assertDataFormatError "incorrect header check") decomp
 
-  withSampleData "not-gzip" $ \hnd -> do
+  , ioProperty $ withSampleData "not-gzip" $ \hnd -> do
     let decomp = decompressIO zlibFormat defaultDecompressParams
-    err <- assertDecompressError hnd decomp
-    msg <- assertDataFormatError err
-    msg @?= "incorrect header check"
+    assertDecompressError hnd (assertDataFormatError "incorrect header check") decomp
 
-  withSampleData "not-gzip" $ \hnd -> do
+  , ioProperty $ withSampleData "not-gzip" $ \hnd -> do
     let decomp = decompressIO rawFormat defaultDecompressParams
-    err <- assertDecompressError hnd decomp
-    msg <- assertDataFormatError err
-    msg @?= "invalid code lengths set"
+    assertDecompressError hnd (assertDataFormatError "invalid code lengths set") decomp
 
-  withSampleData "not-gzip" $ \hnd -> do
+  , ioProperty $ withSampleData "not-gzip" $ \hnd -> do
     let decomp = decompressIO gzipOrZlibFormat defaultDecompressParams
-    err <- assertDecompressError hnd decomp
-    msg <- assertDataFormatError err
-    msg @?= "incorrect header check"
+    assertDecompressError hnd (assertDataFormatError "incorrect header check") decomp
+  ]
 
-test_custom_dict :: Assertion
-test_custom_dict =
+test_custom_dict :: Property
+test_custom_dict = ioProperty $
   withSampleData "custom-dict.zlib" $ \hnd -> do
     let decomp = decompressIO zlibFormat defaultDecompressParams
-    err <- assertDecompressError hnd decomp
-    err @?= DictionaryRequired
+    assertDecompressError hnd (=== DictionaryRequired) decomp
 
-test_wrong_dictionary :: Assertion
-test_wrong_dictionary = do
+test_wrong_dictionary :: Property
+test_wrong_dictionary = ioProperty $
   withSampleData "custom-dict.zlib" $ \hnd -> do
     let decomp = decompressIO zlibFormat defaultDecompressParams {
                                            decompressDictionary = -- wrong dict!
                                              Just (BS.pack [65,66,67])
                                          }
 
-    err <- assertDecompressError hnd decomp
-    err @?= DictionaryMismatch
+    assertDecompressError hnd (=== DictionaryMismatch) decomp
 
-test_right_dictionary :: Assertion
-test_right_dictionary = do
+test_right_dictionary :: Property
+test_right_dictionary = ioProperty $
   withSampleData "custom-dict.zlib" $ \hnd -> do
     dict <- readSampleData "custom-dict.zlib-dict"
     let decomp = decompressIO zlibFormat defaultDecompressParams {
@@ -226,46 +213,48 @@ test_right_dictionary = do
                                          }
     assertDecompressOk hnd decomp
 
-test_trailing_data :: Assertion
-test_trailing_data =
+test_trailing_data :: Property
+test_trailing_data = ioProperty $
   withSampleData "two-files.gz" $ \hnd -> do
     let decomp = decompressIO gzipFormat defaultDecompressParams {
                    decompressAllMembers = False
                  }
-    chunks <- assertDecompressOkChunks hnd decomp
-    case chunks of
-      [chunk] -> chunk @?= BS.Char8.pack "Test 1"
-      _       -> assertFailure "expected single chunk"
+        checkChunks chunks = case chunks of
+          [chunk] -> chunk === BS.Char8.pack "Test 1"
+          _       -> counterexample "expected single chunk" False
+    assertDecompressOkChunks hnd checkChunks decomp
 
-test_multiple_members :: Assertion
-test_multiple_members =
+
+test_multiple_members :: Property
+test_multiple_members = ioProperty $
   withSampleData "two-files.gz" $ \hnd -> do
     let decomp = decompressIO gzipFormat defaultDecompressParams {
                    decompressAllMembers = True
                  }
-    chunks <- assertDecompressOkChunks hnd decomp
-    case chunks of
-      [chunk1,
-       chunk2] -> do chunk1 @?= BS.Char8.pack "Test 1"
-                     chunk2 @?= BS.Char8.pack "Test 2"
-      _       -> assertFailure "expected two chunks"
+        checkChunks chunks = case chunks of
+          [chunk1, chunk2] ->
+            chunk1 === BS.Char8.pack "Test 1" .&&. chunk2 === BS.Char8.pack "Test 2"
+          _ -> counterexample "expected two chunks" False
+    assertDecompressOkChunks hnd checkChunks decomp
 
-test_small_chunks :: Assertion
-test_small_chunks = do
+test_small_chunks :: Property
+test_small_chunks = ioProperty $ do
   uncompressedFile <- readSampleData "not-gzip"
-  GZip.compress (smallChunks uncompressedFile) @?= GZip.compress uncompressedFile
-  Zlib.compress (smallChunks uncompressedFile) @?= Zlib.compress uncompressedFile
-  Raw.compress  (smallChunks uncompressedFile) @?= Raw.compress uncompressedFile
-
-  GZip.decompress (smallChunks (GZip.compress uncompressedFile)) @?= uncompressedFile
-  Zlib.decompress (smallChunks (Zlib.compress uncompressedFile)) @?= uncompressedFile
-  Raw.decompress  (smallChunks (Raw.compress  uncompressedFile)) @?= uncompressedFile
-
   compressedFile   <- readSampleData "hello.gz"
-  (GZip.decompress . smallChunks) compressedFile @?= GZip.decompress compressedFile
+  return $ conjoin
+    [ GZip.compress (smallChunks uncompressedFile) === GZip.compress uncompressedFile
+    , Zlib.compress (smallChunks uncompressedFile) === Zlib.compress uncompressedFile
+    , Raw.compress  (smallChunks uncompressedFile) === Raw.compress uncompressedFile
 
-test_empty :: Assertion
-test_empty = do
+    , GZip.decompress (smallChunks (GZip.compress uncompressedFile)) === uncompressedFile
+    , Zlib.decompress (smallChunks (Zlib.compress uncompressedFile)) === uncompressedFile
+    , Raw.decompress  (smallChunks (Raw.compress  uncompressedFile)) === uncompressedFile
+
+    , (GZip.decompress . smallChunks) compressedFile === GZip.decompress compressedFile
+    ]
+
+test_empty :: Property
+test_empty = ioProperty $ do
   -- Regression test to make sure we only ask for input once in the case of
   -- initially empty input. We previously asked for input twice before
   -- returning the error.
@@ -274,21 +263,18 @@ test_empty = do
     DecompressInputRequired next -> do
       decomp' <- next BS.empty
       case decomp' of
-        DecompressStreamError TruncatedInput -> return ()
-        _ -> assertFailure "expected truncated error"
+        DecompressStreamError TruncatedInput -> return $ property True
+        _ -> return $ counterexample "expected truncated error" False
 
-    _ -> assertFailure "expected input"
+    _ -> return $ counterexample "expected input" False
 
-test_exception :: Assertion
-test_exception =
- (do
-    compressedFile <- readSampleData "bad-crc.gz"
-    _ <- evaluate (BL.length (GZip.decompress compressedFile))
-    assertFailure "expected exception")
-
-  `catch` \err -> do
-      msg <- assertDataFormatError err
-      msg @?= "incorrect data check"
+test_exception :: Property
+test_exception = ioProperty $ do
+  compressedFile <- readSampleData "bad-crc.gz"
+  len <- try (evaluate (BL.length (GZip.decompress compressedFile)))
+  return $ case len of
+    Left err -> assertDataFormatError "incorrect data check" err
+    Right{} -> counterexample "expected exception" False
 
 toStrict :: BL.ByteString -> BS.ByteString
 #if MIN_VERSION_bytestring(0,10,0)
@@ -325,35 +311,33 @@ readSampleData file = BL.readFile ("test/data/" ++ file)
 withSampleData :: FilePath -> (Handle -> IO a) -> IO a
 withSampleData file = withFile ("test/data/" ++ file) ReadMode
 
-expected :: String -> String -> IO a
-expected e g = assertFailure ("expected: " ++ e ++ "\nbut got: " ++ g)
-            >> fail ""
+expected :: String -> String -> Property
+expected e g = counterexample ("expected: " ++ e ++ "\nbut got: " ++ g) False
 
-assertDecompressOk :: Handle -> DecompressStream IO -> Assertion
+assertDecompressOk :: Handle -> DecompressStream IO -> IO Property
 assertDecompressOk hnd =
     foldDecompressStream
       (BS.hGet hnd 4000 >>=)
       (\_ r -> r)
-      (\_ -> return ())
-      (\err -> expected "decompress ok" (show err))
+      (\_ -> return $ property True)
+      (\err -> return $ expected "decompress ok" (show err))
 
-assertDecompressOkChunks :: Handle -> DecompressStream IO -> IO [BS.ByteString]
-assertDecompressOkChunks hnd =
+assertDecompressOkChunks :: Handle -> ([BS.ByteString] -> Property) -> DecompressStream IO -> IO Property
+assertDecompressOkChunks hnd callback = fmap (either id callback) .
     foldDecompressStream
       (BS.hGet hnd 4000 >>=)
-      (\chunk -> liftM (chunk:))
-      (\_ -> return [])
-      (\err -> expected "decompress ok" (show err))
+      (\chunk -> liftM (liftM (chunk:)))
+      (\_ -> return $ Right [])
+      (\err -> return $ Left $ expected "decompress ok" (show err))
 
-assertDecompressError :: Handle -> DecompressStream IO -> IO DecompressError
-assertDecompressError hnd =
+assertDecompressError :: Handle -> (DecompressError -> Property) -> DecompressStream IO -> IO Property
+assertDecompressError hnd callback =
     foldDecompressStream
       (BS.hGet hnd 4000 >>=)
       (\_ r -> r)
-      (\_ -> expected "StreamError" "StreamEnd")
-      return
+      (\_ -> return $ expected "StreamError" "StreamEnd")
+      (return . callback)
 
-assertDataFormatError :: DecompressError -> IO String
-assertDataFormatError (DataFormatError detail) = return detail
-assertDataFormatError _                        = assertFailure "expected DataError"
-                                              >> return ""
+assertDataFormatError :: String -> DecompressError -> Property
+assertDataFormatError expect (DataFormatError actual) = expect === actual
+assertDataFormatError _ _ = counterexample "expected DataError" False
