@@ -180,7 +180,16 @@ test_non_gzip = conjoin
 
   , ioProperty $ withSampleData "not-gzip" $ \hnd -> do
     let decomp = decompressIO rawFormat defaultDecompressParams
-    assertDecompressError hnd (assertDataFormatError "invalid code lengths set") decomp
+        checkError err = disjoin
+          -- The majority of platforms throw this:
+          [ assertDataFormatError "invalid code lengths set" err
+          -- But on z15+ mainframes zlib employs CPU instruction DFLTCC,
+          -- which returns error code with the same meaning.
+          -- See http://publibfp.dhe.ibm.com/epubs/pdf/a227832c.pdf, page 26-37
+          -- and https://github.com/haskell/zlib/issues/46
+          , assertDataFormatError "Operation-Ending-Supplemental Code is 0x27" err
+          ]
+    assertDecompressError hnd checkError decomp
 
   , ioProperty $ withSampleData "not-gzip" $ \hnd -> do
     let decomp = decompressIO gzipOrZlibFormat defaultDecompressParams
