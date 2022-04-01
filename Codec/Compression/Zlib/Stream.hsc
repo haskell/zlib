@@ -97,7 +97,7 @@ module Codec.Compression.Zlib.Stream (
 
   ) where
 
--- Note we don't use the MIN_VERSION_* macros here for compatability with
+-- Note we don't use the MIN_VERSION_* macros here for compatibility with
 -- old Cabal versions that come with old GHC, that didn't provide these
 -- macros for .hsc files. So we use __GLASGOW_HASKELL__ as a proxy.
 
@@ -776,7 +776,7 @@ fromWindowBits format bits = (formatModifier format) (checkWindowBits bits)
 
 
 -- | The 'MemoryLevel' parameter specifies how much memory should be allocated
--- for the internal compression state. It is a tradoff between memory usage,
+-- for the internal compression state. It is a tradeoff between memory usage,
 -- compression ratio and compression speed. Using more memory allows faster
 -- compression and a better compression ratio.
 --
@@ -790,7 +790,7 @@ fromWindowBits format bits = (formatModifier format) (checkWindowBits bits)
 -- For example, for compression with the default @windowBits = 15@ and
 -- @memLevel = 8@ uses @256Kb@. So for example a network server with 100
 -- concurrent compressed streams would use @25Mb@. The memory per stream can be
--- halved (at the cost of somewhat degraded and slower compressionby) by
+-- halved (at the cost of somewhat degraded and slower compression) by
 -- reducing the @windowBits@ and @memLevel@ by one.
 --
 -- Decompression takes less memory, the default @windowBits = 15@ corresponds
@@ -1016,9 +1016,9 @@ newtype StreamState = StreamState (Ptr StreamState)
 
 -- inflateInit2 and deflateInit2 are actually defined as macros in zlib.h
 -- They are defined in terms of inflateInit2_ and deflateInit2_ passing two
--- additional arguments used to detect compatability problems. They pass the
+-- additional arguments used to detect compatibility problems. They pass the
 -- version of zlib as a char * and the size of the z_stream struct.
--- If we compile via C then we can avoid this hassle however thats not really
+-- If we compile via C then we can avoid this hassle however that's not really
 -- kosher since the Haskell FFI is defined at the C ABI level, not the C
 -- language level. There is no requirement to compile via C and pick up C
 -- headers. So it's much better if we can make it work properly and that'd
