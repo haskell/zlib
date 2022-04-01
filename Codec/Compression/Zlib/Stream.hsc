@@ -237,7 +237,7 @@ outputBufferBytesAvailable :: Stream Int
 outputBufferBytesAvailable = getOutAvail
 
 
--- you needen't get all the output immediately, you can continue until
+-- you needn't get all the output immediately, you can continue until
 -- there is no more output space available, this tells you that amount
 outputBufferSpaceRemaining :: Stream Int
 outputBufferSpaceRemaining = getOutFree
