@@ -104,7 +104,7 @@ decompressWith = Internal.decompress gzipFormat
 
 -- | Compress a stream of data into the gzip format.
 --
--- This uses the default compression parameters. In partiular it uses the
+-- This uses the default compression parameters. In particular it uses the
 -- default compression level which favours a higher compression ratio over
 -- compression speed, though it does not use the maximum compression level.
 --

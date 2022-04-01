@@ -127,7 +127,7 @@ data CompressParams = CompressParams {
 --
 -- One particular use case for setting the 'decompressBufferSize' is if you
 -- know the exact size of the decompressed data and want to produce a strict
--- 'Data.ByteString.ByteString'. The compression and deccompression functions
+-- 'Data.ByteString.ByteString'. The compression and decompression functions
 -- use lazy 'Data.ByteString.Lazy.ByteString's but if you set the
 -- 'decompressBufferSize' correctly then you can generate a lazy
 -- 'Data.ByteString.Lazy.ByteString' with exactly one chunk, which can be
@@ -230,7 +230,7 @@ data DecompressError =
      -- get this error, for example if the input data just isn't a compressed
      -- zlib data stream. In particular if the data checksum turns out to be
      -- wrong then you will get all the decompressed data but this error at the
-     -- end, instead of the normal sucessful 'StreamEnd'.
+     -- end, instead of the normal successful 'StreamEnd'.
    | DataFormatError String
   deriving (Eq, Typeable)
 
@@ -307,7 +307,7 @@ foldDecompressStreamWithInput chunk end err = \s lbs ->
 -- that they can produce output without demanding all input, however they need
 -- the input data stream as a lazy 'L.ByteString'. Having the input data
 -- stream as a lazy 'L.ByteString' often requires using lazy I\/O which is not
--- appropriate in all cicumstances.
+-- appropriate in all circumstances.
 --
 -- For these cases an incremental interface is more appropriate. This interface
 -- allows both incremental input and output. Chunks of input data are supplied
@@ -492,8 +492,8 @@ compressStream format (CompressParams compLevel method bits memLevel
     Stream.consistencyCheck
 #endif
 
-    -- in this state there are two possabilities:
-    --   * no outbut buffer space is available
+    -- in this state there are two possibilities:
+    --   * no output buffer space is available
     --       - in which case we must make more available
     --   * no input buffer is available
     --       - in which case we must supply more
@@ -641,8 +641,8 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
     Stream.consistencyCheck
 #endif
 
-    -- in this state there are two possabilities:
-    --   * no outbut buffer space is available
+    -- in this state there are two possibilities:
+    --   * no output buffer space is available
     --       - in which case we must make more available
     --   * no input buffer is available
     --       - in which case we must supply more
@@ -691,7 +691,7 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
       Stream.StreamEnd      -> do
         -- The decompressor tells us we're done.
         -- Note that there may be input bytes still available if the stream is
-        -- embeded in some other data stream, so we return any trailing data.
+        -- embedded in some other data stream, so we return any trailing data.
         inputBufferEmpty <- Stream.inputBufferEmpty
         if inputBufferEmpty
           then do finish (DecompressStreamEnd S.empty)
