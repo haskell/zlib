@@ -1,0 +1,2 @@
+cbits/*.c linguist-detectable=false
+cbits/*.h linguist-detectable=false
