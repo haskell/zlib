@@ -52,7 +52,7 @@ See also http://pvp.haskell.org/faq
  * Simplified structured error type, and instance of Exception
  * Updated bundled zlib C code to 1.2.8 (used on Windows)
  * Fixed memory leak of zlib z_stream C structure
- * More derivied instances (Eq, Show, Typeable, Generic)
+ * More derived instances (Eq, Show, Typeable, Generic)
 
 0.5.4.2 Duncan Coutts <duncan@community.haskell.org> November 2014
 
