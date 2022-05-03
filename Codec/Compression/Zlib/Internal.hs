@@ -925,7 +925,8 @@ decompressStreamST format params =
         if S.length chunk > 1
           then do
             -- have to handle the remaining data in this chunk
-            (DecompressInputRequired next, zstate') <- runStreamST resume zstate
+            x <- runStreamST resume zstate
+            let (DecompressInputRequired next, zstate') = x
             (strm', zstate'') <- runStreamST (next (S.tail chunk)) zstate'
             go strm' zstate'' False
           else do
