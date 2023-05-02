@@ -101,7 +101,12 @@ library
   build-tools:     hsc2hs >= 0.67 && < 0.69
     -- GHC 7 ships hsc2hs-0.67
 
-  includes:        zlib.h
+  -- use `includes:` to include them when compiling
+  includes:        zlib.h hs-zlib.h
+  -- use `install-includes:` to make it part of the sdist
+  install-includes: hs-zlib.h
+  include-dirs:    cbits-extra
+  c-sources:       cbits-extra/hs-zlib.c
   ghc-options:     -Wall -fwarn-tabs
   if flag(non-blocking-ffi)
     cpp-options:   -DNON_BLOCKING_FFI
