@@ -1098,7 +1098,7 @@ c_deflateInit2 z a b c d e =
 foreign import ccall SAFTY "zlib.h inflate"
   c_inflate :: StreamState -> CInt -> IO CInt
 
-foreign import ccall unsafe "zlib.h &inflateEnd"
+foreign import ccall unsafe "hs-zlib.h &_hs_zlib_inflateEnd"
   c_inflateEnd :: FinalizerPtr StreamState
 
 foreign import ccall unsafe "zlib.h inflateReset"
@@ -1119,7 +1119,7 @@ foreign import ccall unsafe "zlib.h inflateSetDictionary"
 foreign import ccall SAFTY "zlib.h deflate"
   c_deflate :: StreamState -> CInt -> IO CInt
 
-foreign import ccall unsafe "zlib.h &deflateEnd"
+foreign import ccall unsafe "hs-zlib.h &_hs_zlib_deflateEnd"
   c_deflateEnd :: FinalizerPtr StreamState
 
 foreign import ccall unsafe "zlib.h zlibVersion"
