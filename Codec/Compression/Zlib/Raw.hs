@@ -47,6 +47,8 @@ module Codec.Compression.Zlib.Raw (
     defaultStrategy,
     filteredStrategy,
     huffmanOnlyStrategy,
+    rleStrategy,
+    fixedStrategy,
 
   ) where
 

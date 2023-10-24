@@ -56,6 +56,8 @@ module Codec.Compression.Zlib.Stream (
     defaultStrategy,
     filteredStrategy,
     huffmanOnlyStrategy,
+    rleStrategy,
+    fixedStrategy,
 
   -- * The buisness
   deflate,
@@ -586,14 +588,14 @@ data Flush =
   | SyncFlush
   | FullFlush
   | Finish
---  | Block -- only available in zlib 1.2 and later, uncomment if you need it.
+  | Block
 
 fromFlush :: Flush -> CInt
 fromFlush NoFlush   = #{const Z_NO_FLUSH}
 fromFlush SyncFlush = #{const Z_SYNC_FLUSH}
 fromFlush FullFlush = #{const Z_FULL_FLUSH}
 fromFlush Finish    = #{const Z_FINISH}
---  fromFlush Block     = #{const Z_BLOCK}
+fromFlush Block     = #{const Z_BLOCK}
 
 
 -- | The format used for compression or decompression. There are three
@@ -855,25 +857,21 @@ data CompressionStrategy =
     DefaultStrategy
   | Filtered
   | HuffmanOnly
+  | RLE
+  -- ^ @since 0.7.0.0
+  | Fixed
+  -- ^ @since 0.7.0.0
   deriving (Eq, Ord, Enum, Bounded, Show, Typeable
 #if __GLASGOW_HASKELL__ >= 702
               , Generic
 #endif
            )
 
-{-
--- -- only available in zlib 1.2 and later, uncomment if you need it.
-  | RLE             -- ^ Use 'RLE' to limit match distances to one (run-length
-                    --   encoding). 'RLE' is designed to be almost as fast as
-                    --   'HuffmanOnly', but give better compression for PNG
-                    --   image data.
-  | Fixed           -- ^ 'Fixed' prevents the use of dynamic Huffman codes,
-                    --   allowing for a simpler decoder for special applications.
--}
-
 {-# DEPRECATED DefaultStrategy "Use defaultStrategy. CompressionStrategy constructors will be hidden in version 0.7"     #-}
 {-# DEPRECATED Filtered        "Use filteredStrategy. CompressionStrategy constructors will be hidden in version 0.7"    #-}
 {-# DEPRECATED HuffmanOnly     "Use huffmanOnlyStrategy. CompressionStrategy constructors will be hidden in version 0.7" #-}
+{-# DEPRECATED RLE             "Use rleStrategy. CompressionStrategy constructors will be hidden in version 0.7" #-}
+{-# DEPRECATED Fixed           "Use fixedStrategy. CompressionStrategy constructors will be hidden in version 0.7" #-}
 
 -- | Use this default compression strategy for normal data.
 --
@@ -896,14 +894,28 @@ filteredStrategy = Filtered
 huffmanOnlyStrategy :: CompressionStrategy
 huffmanOnlyStrategy = HuffmanOnly
 
+-- | Use 'rleStrategy' to limit match distances to one (run-length
+-- encoding). 'rleStrategy' is designed to be almost as fast as
+-- 'huffmanOnlyStrategy', but give better compression for PNG
+-- image data.
+--
+-- @since 0.7.0.0
+rleStrategy :: CompressionStrategy
+rleStrategy = RLE
+
+-- | 'fixedStrategy' prevents the use of dynamic Huffman codes,
+-- allowing for a simpler decoder for special applications.
+--
+-- @since 0.7.0.0
+fixedStrategy :: CompressionStrategy
+fixedStrategy = Fixed
 
 fromCompressionStrategy :: CompressionStrategy -> CInt
 fromCompressionStrategy DefaultStrategy = #{const Z_DEFAULT_STRATEGY}
 fromCompressionStrategy Filtered        = #{const Z_FILTERED}
 fromCompressionStrategy HuffmanOnly     = #{const Z_HUFFMAN_ONLY}
---fromCompressionStrategy RLE             = #{const Z_RLE}
---fromCompressionStrategy Fixed           = #{const Z_FIXED}
-
+fromCompressionStrategy RLE             = #{const Z_RLE}
+fromCompressionStrategy Fixed           = #{const Z_FIXED}
 
 withStreamPtr :: (Ptr StreamState -> IO a) -> Stream a
 withStreamPtr f = do

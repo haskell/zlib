@@ -70,6 +70,8 @@ module Codec.Compression.Zlib.Internal (
     Stream.defaultStrategy,
     Stream.filteredStrategy,
     Stream.huffmanOnlyStrategy,
+    Stream.rleStrategy,
+    Stream.fixedStrategy,
 
   ) where
 

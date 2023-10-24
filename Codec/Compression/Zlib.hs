@@ -51,6 +51,8 @@ module Codec.Compression.Zlib (
     defaultStrategy,
     filteredStrategy,
     huffmanOnlyStrategy,
+    rleStrategy,
+    fixedStrategy,
 
   ) where
 

@@ -63,6 +63,8 @@ module Codec.Compression.GZip (
     defaultStrategy,
     filteredStrategy,
     huffmanOnlyStrategy,
+    rleStrategy,
+    fixedStrategy,
 
   ) where
 

@@ -34,7 +34,4 @@ instance Arbitrary MemoryLevel where
 
 
 instance Arbitrary CompressionStrategy where
-  arbitrary = elements $ [defaultStrategy, filteredStrategy, huffmanOnlyStrategy]
-                   -- These are disabled by default in the package
-                   -- as they are only available with zlib >=1.2
-                   -- ++ [RLE, Fixed]
+  arbitrary = elements $ [defaultStrategy, filteredStrategy, huffmanOnlyStrategy, rleStrategy, fixedStrategy]
