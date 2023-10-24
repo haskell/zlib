@@ -680,11 +680,15 @@ data CompressionLevel =
   | BestCompression
   | CompressionLevel Int
   -- ^ Use 'compressionLevel'. 'CompressionLevel' constructors will be hidden in version 0.7.
-  deriving (Eq, Show, Typeable
+  deriving
+  ( Eq
+  , Ord -- ^ @since 0.7.0.0
+  , Show
+  , Typeable
 #if __GLASGOW_HASKELL__ >= 702
-              , Generic
+  , Generic
 #endif
-           )
+  )
 
 {-# DEPRECATED DefaultCompression "Use 'defaultCompression'. 'CompressionLevel' constructors will be hidden in version 0.7." #-}
 {-# DEPRECATED NoCompression      "Use 'noCompression'. 'CompressionLevel' constructors will be hidden in version 0.7."      #-}
@@ -746,11 +750,15 @@ data WindowBits = WindowBits Int
                                     -- is used by the tests.
                                     -- It makse sense because the default value
                                     -- is is also the max value at 15.
-  deriving (Eq, Ord, Show, Typeable
+  deriving
+  ( Eq
+  , Ord -- ^ @since 0.7.0.0
+  , Show
+  , Typeable
 #if __GLASGOW_HASKELL__ >= 702
-              , Generic
+  , Generic
 #endif
-           )
+  )
 
 {-# DEPRECATED DefaultWindowBits  "Use 'defaultWindowBits'. 'WindowBits' constructors will be hidden in version 0.7." #-}
 --FIXME: cannot deprecate constructor named the same as the type
@@ -807,11 +815,15 @@ data MemoryLevel =
   | MaxMemoryLevel
   | MemoryLevel Int
   -- ^ Use 'memoryLevel'. 'MemoryLevel' constructors will be hidden in version 0.7.
-  deriving (Eq, Show, Typeable
+  deriving
+  ( Eq
+  , Ord -- ^ @since 0.7.0.0
+  , Show
+  , Typeable
 #if __GLASGOW_HASKELL__ >= 702
-              , Generic
+  , Generic
 #endif
-           )
+  )
 
 {-# DEPRECATED DefaultMemoryLevel "Use 'defaultMemoryLevel'. 'MemoryLevel' constructors will be hidden in version 0.7." #-}
 {-# DEPRECATED MinMemoryLevel     "Use 'minMemoryLevel'. 'MemoryLevel' constructors will be hidden in version 0.7."     #-}

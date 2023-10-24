@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, RankNTypes, DeriveDataTypeable, BangPatterns #-}
+{-# LANGUAGE CPP, RankNTypes, DeriveDataTypeable, DeriveGeneric, BangPatterns #-}
 #if __GLASGOW_HASKELL__ >= 702
 {-# LANGUAGE Trustworthy #-}
 #endif
@@ -86,6 +86,9 @@ import qualified Control.Monad.ST.Unsafe as Unsafe (unsafeIOToST)
 import qualified Control.Monad.ST.Strict as Unsafe (unsafeIOToST)
 #endif
 import Data.Typeable (Typeable)
+#if __GLASGOW_HASKELL__ >= 702
+import GHC.Generics (Generic)
+#endif
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString          as S
@@ -115,7 +118,15 @@ data CompressParams = CompressParams {
   compressStrategy    :: !Stream.CompressionStrategy,
   compressBufferSize  :: !Int,
   compressDictionary  :: Maybe S.ByteString
-} deriving Show
+  } deriving
+  ( Eq       -- ^ @since 0.7.0.0
+  , Ord      -- ^ @since 0.7.0.0
+  , Show
+  , Typeable -- ^ @since 0.7.0.0
+#if __GLASGOW_HASKELL__ >= 702
+  , Generic  -- ^ @since 0.7.0.0
+#endif
+  )
 
 -- | The full set of parameters for decompression. The defaults are
 -- 'defaultDecompressParams'.
@@ -141,7 +152,15 @@ data DecompressParams = DecompressParams {
   decompressBufferSize :: !Int,
   decompressDictionary :: Maybe S.ByteString,
   decompressAllMembers :: Bool
-} deriving Show
+  } deriving
+  ( Eq       -- ^ @since 0.7.0.0
+  , Ord      -- ^ @since 0.7.0.0
+  , Show
+  , Typeable -- ^ @since 0.7.0.0
+#if __GLASGOW_HASKELL__ >= 702
+  , Generic  -- ^ @since 0.7.0.0
+#endif
+  )
 
 -- | The default set of parameters for compression. This is typically used with
 -- 'Codec.Compression.GZip.compressWith' or 'Codec.Compression.Zlib.compressWith'
@@ -236,7 +255,14 @@ data DecompressError =
      -- wrong then you will get all the decompressed data but this error at the
      -- end, instead of the normal successful 'Stream.StreamEnd'.
    | DataFormatError String
-  deriving (Eq, Typeable)
+  deriving
+  ( Eq
+  , Ord     -- ^ @since 0.7.0.0
+  , Typeable
+#if __GLASGOW_HASKELL__ >= 702
+  , Generic -- ^ @since 0.7.0.0
+#endif
+           )
 
 instance Show DecompressError where
   show TruncatedInput     = modprefix "premature end of compressed data stream"
