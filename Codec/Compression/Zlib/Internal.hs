@@ -144,7 +144,8 @@ data DecompressParams = DecompressParams {
 } deriving Show
 
 -- | The default set of parameters for compression. This is typically used with
--- the @compressWith@ function with specific parameters overridden.
+-- 'Codec.Compression.GZip.compressWith' or 'Codec.Compression.Zlib.compressWith'
+-- with specific parameters overridden.
 --
 defaultCompressParams :: CompressParams
 defaultCompressParams = CompressParams {
@@ -158,7 +159,8 @@ defaultCompressParams = CompressParams {
 }
 
 -- | The default set of parameters for decompression. This is typically used with
--- the @compressWith@ function with specific parameters overridden.
+-- 'Codec.Compression.GZip.decompressWith' or 'Codec.Compression.Zlib.decompressWith'
+-- with specific parameters overridden.
 --
 defaultDecompressParams :: DecompressParams
 defaultDecompressParams = DecompressParams {
@@ -181,7 +183,7 @@ defaultDecompressBufferSize = 32 * 1024 - L.chunkOverhead
 -- input and provision of output are interleaved.
 --
 -- To indicate the end of the input supply an empty input chunk. Note that
--- for 'gzipFormat' with the default 'decompressAllMembers' @True@ you will
+-- for 'Stream.gzipFormat' with the default 'decompressAllMembers' @True@ you will
 -- have to do this, as the decompressor will look for any following members.
 -- With 'decompressAllMembers' @False@ the decompressor knows when the data
 -- ends and will produce 'DecompressStreamEnd' without you having to supply an
@@ -225,14 +227,14 @@ data DecompressError =
    | DictionaryRequired
 
      -- | If the stream requires a dictionary and you provide one with the
-     -- wrong 'DictionaryHash' then you will get this error.
+     -- wrong 'Stream.DictionaryHash' then you will get this error.
    | DictionaryMismatch
 
      -- | If the compressed data stream is corrupted in any way then you will
      -- get this error, for example if the input data just isn't a compressed
      -- zlib data stream. In particular if the data checksum turns out to be
      -- wrong then you will get all the decompressed data but this error at the
-     -- end, instead of the normal successful 'StreamEnd'.
+     -- end, instead of the normal successful 'Stream.StreamEnd'.
    | DataFormatError String
   deriving (Eq, Typeable)
 

@@ -550,7 +550,7 @@ data ErrorCode =
   | MemoryError
   | BufferError -- ^ No progress was possible or there was not enough room in
                 --   the output buffer when 'Finish' is used. Note that
-                --   'BuferError' is not fatal, and 'inflate' can be called
+                --   'BufferError' is not fatal, and 'inflate' can be called
                 --   again with more input and more output space to continue.
   | VersionError
   | Unexpected
@@ -608,10 +608,10 @@ data Format = GZip | Zlib | Raw | GZipOrZlib
 #endif
            )
 
-{-# DEPRECATED GZip       "Use gzipFormat. Format constructors will be hidden in version 0.7"       #-}
-{-# DEPRECATED Zlib       "Use zlibFormat. Format constructors will be hidden in version 0.7"       #-}
-{-# DEPRECATED Raw        "Use rawFormat. Format constructors will be hidden in version 0.7"        #-}
-{-# DEPRECATED GZipOrZlib "Use gzipOrZlibFormat. Format constructors will be hidden in version 0.7" #-}
+{-# DEPRECATED GZip       "Use 'gzipFormat'. 'Format' constructors will be hidden in version 0.7."       #-}
+{-# DEPRECATED Zlib       "Use 'zlibFormat'. 'Format' constructors will be hidden in version 0.7."       #-}
+{-# DEPRECATED Raw        "Use 'rawFormat'. 'Format' constructors will be hidden in version 0.7."        #-}
+{-# DEPRECATED GZipOrZlib "Use 'gzipOrZlibFormat'. 'Format' constructors will be hidden in version 0.7." #-}
 
 -- | The gzip format uses a header with a checksum and some optional meta-data
 -- about the compressed file. It is intended primarily for compressing
@@ -657,9 +657,9 @@ data Method = Deflated
 #endif
            )
 
-{-# DEPRECATED Deflated "Use deflateMethod. Method constructors will be hidden in version 0.7" #-}
+{-# DEPRECATED Deflated "Use 'deflateMethod'. 'Method' constructors will be hidden in version 0.7." #-}
 
--- | \'Deflate\' is the only method supported in this version of zlib.
+-- | The only method supported in this version of zlib.
 -- Indeed it is likely to be the only method that ever will be supported.
 --
 deflateMethod :: Method
@@ -679,18 +679,19 @@ data CompressionLevel =
   | BestSpeed
   | BestCompression
   | CompressionLevel Int
+  -- ^ Use 'compressionLevel'. 'CompressionLevel' constructors will be hidden in version 0.7.
   deriving (Eq, Show, Typeable
 #if __GLASGOW_HASKELL__ >= 702
               , Generic
 #endif
            )
 
-{-# DEPRECATED DefaultCompression "Use defaultCompression. CompressionLevel constructors will be hidden in version 0.7" #-}
-{-# DEPRECATED NoCompression      "Use noCompression. CompressionLevel constructors will be hidden in version 0.7"      #-}
-{-# DEPRECATED BestSpeed          "Use bestSpeed. CompressionLevel constructors will be hidden in version 0.7"          #-}
-{-# DEPRECATED BestCompression    "Use bestCompression. CompressionLevel constructors will be hidden in version 0.7"    #-}
+{-# DEPRECATED DefaultCompression "Use 'defaultCompression'. 'CompressionLevel' constructors will be hidden in version 0.7." #-}
+{-# DEPRECATED NoCompression      "Use 'noCompression'. 'CompressionLevel' constructors will be hidden in version 0.7."      #-}
+{-# DEPRECATED BestSpeed          "Use 'bestSpeed'. 'CompressionLevel' constructors will be hidden in version 0.7."          #-}
+{-# DEPRECATED BestCompression    "Use 'bestCompression'. 'CompressionLevel' constructors will be hidden in version 0.7."    #-}
 --FIXME: cannot deprecate constructor named the same as the type
-{- DEPRECATED CompressionLevel   "Use compressionLevel. CompressionLevel constructors will be hidden in version 0.7"   -}
+{- DEPRECATED CompressionLevel   "Use 'compressionLevel'. 'CompressionLevel' constructors will be hidden in version 0.7."   -}
 
 -- | The default compression level is 6 (that is, biased towards higher
 -- compression at expense of speed).
@@ -738,6 +739,8 @@ fromCompressionLevel (CompressionLevel n)
 -- 'MemoryLevel'. See the 'MemoryLevel' for the details.
 --
 data WindowBits = WindowBits Int
+                -- ^ Use 'windowBits'.
+                -- 'WindowBits' constructors will be hidden in version 0.7.
                 | DefaultWindowBits -- This constructor must be last to make
                                     -- the Ord instance work. The Ord instance
                                     -- is used by the tests.
@@ -749,9 +752,9 @@ data WindowBits = WindowBits Int
 #endif
            )
 
-{-# DEPRECATED DefaultWindowBits  "Use defaultWindowBits. WindowBits constructors will be hidden in version 0.7" #-}
+{-# DEPRECATED DefaultWindowBits  "Use 'defaultWindowBits'. 'WindowBits' constructors will be hidden in version 0.7." #-}
 --FIXME: cannot deprecate constructor named the same as the type
-{- DEPRECATED WindowBits         "Use windowBits. WindowBits constructors will be hidden in version 0.7"        -}
+{- DEPRECATED WindowBits         "Use 'windowBits'. 'WindowBits' constructors will be hidden in version 0.7."        -}
 
 -- | The default 'WindowBits' is 15 which is also the maximum size.
 --
@@ -803,17 +806,18 @@ data MemoryLevel =
   | MinMemoryLevel
   | MaxMemoryLevel
   | MemoryLevel Int
+  -- ^ Use 'memoryLevel'. 'MemoryLevel' constructors will be hidden in version 0.7.
   deriving (Eq, Show, Typeable
 #if __GLASGOW_HASKELL__ >= 702
               , Generic
 #endif
            )
 
-{-# DEPRECATED DefaultMemoryLevel "Use defaultMemoryLevel. MemoryLevel constructors will be hidden in version 0.7" #-}
-{-# DEPRECATED MinMemoryLevel     "Use minMemoryLevel. MemoryLevel constructors will be hidden in version 0.7"     #-}
-{-# DEPRECATED MaxMemoryLevel     "Use maxMemoryLevel. MemoryLevel constructors will be hidden in version 0.7"     #-}
+{-# DEPRECATED DefaultMemoryLevel "Use 'defaultMemoryLevel'. 'MemoryLevel' constructors will be hidden in version 0.7." #-}
+{-# DEPRECATED MinMemoryLevel     "Use 'minMemoryLevel'. 'MemoryLevel' constructors will be hidden in version 0.7."     #-}
+{-# DEPRECATED MaxMemoryLevel     "Use 'maxMemoryLevel'. 'MemoryLevel' constructors will be hidden in version 0.7."     #-}
 --FIXME: cannot deprecate constructor named the same as the type
-{- DEPRECATED MemoryLevel        "Use memoryLevel. MemoryLevel constructors will be hidden in version 0.7"        -}
+{- DEPRECATED MemoryLevel        "Use 'memoryLevel'. 'MemoryLevel' constructors will be hidden in version 0.7."        -}
 
 -- | The default memory level. (Equivalent to @'memoryLevel' 8@)
 --
@@ -867,11 +871,11 @@ data CompressionStrategy =
 #endif
            )
 
-{-# DEPRECATED DefaultStrategy "Use defaultStrategy. CompressionStrategy constructors will be hidden in version 0.7"     #-}
-{-# DEPRECATED Filtered        "Use filteredStrategy. CompressionStrategy constructors will be hidden in version 0.7"    #-}
-{-# DEPRECATED HuffmanOnly     "Use huffmanOnlyStrategy. CompressionStrategy constructors will be hidden in version 0.7" #-}
-{-# DEPRECATED RLE             "Use rleStrategy. CompressionStrategy constructors will be hidden in version 0.7" #-}
-{-# DEPRECATED Fixed           "Use fixedStrategy. CompressionStrategy constructors will be hidden in version 0.7" #-}
+{-# DEPRECATED DefaultStrategy "Use 'defaultStrategy'. 'CompressionStrategy' constructors will be hidden in version 0.7."     #-}
+{-# DEPRECATED Filtered        "Use 'filteredStrategy'. 'CompressionStrategy' constructors will be hidden in version 0.7."    #-}
+{-# DEPRECATED HuffmanOnly     "Use 'huffmanOnlyStrategy'. 'CompressionStrategy' constructors will be hidden in version 0.7." #-}
+{-# DEPRECATED RLE             "Use 'rleStrategy'. 'CompressionStrategy' constructors will be hidden in version 0.7." #-}
+{-# DEPRECATED Fixed           "Use 'fixedStrategy'. 'CompressionStrategy' constructors will be hidden in version 0.7." #-}
 
 -- | Use this default compression strategy for normal data.
 --
@@ -883,7 +887,7 @@ defaultStrategy = DefaultStrategy
 -- random distribution. In this case, the compression algorithm is tuned to
 -- compress them better. The effect of this strategy is to force more Huffman
 -- coding and less string matching; it is somewhat intermediate between
--- 'defaultCompressionStrategy' and 'huffmanOnlyCompressionStrategy'.
+-- 'defaultStrategy' and 'huffmanOnlyStrategy'.
 --
 filteredStrategy :: CompressionStrategy
 filteredStrategy = Filtered
