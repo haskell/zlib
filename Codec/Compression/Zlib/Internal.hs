@@ -925,8 +925,10 @@ decompressStreamST format params =
         if S.length chunk > 1
           then do
             -- have to handle the remaining data in this chunk
-            x <- runStreamST resume zstate
-            let (DecompressInputRequired next, zstate') = x
+            (x, zstate') <- runStreamST resume zstate
+            let next = case x of
+                  DecompressInputRequired n -> n
+                  _ -> error "checkHeaderSplit: unexpected result of runStreamST"
             (strm', zstate'') <- runStreamST (next (S.tail chunk)) zstate'
             go strm' zstate'' False
           else do
