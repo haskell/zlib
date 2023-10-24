@@ -36,8 +36,8 @@ tested-with:     GHC == 7.0.4
                , GHC == 8.10.7
                , GHC == 9.0.2
                , GHC == 9.2.8
-               , GHC == 9.4.6
-               , GHC == 9.6.2
+               , GHC == 9.4.7
+               , GHC == 9.6.3
                , GHC == 9.8.1
 
 extra-source-files: changelog
@@ -101,6 +101,9 @@ library
                    bytestring >= 0.9 && < 0.13
   if impl(ghc >= 7.0 && < 8.0.3)
     build-depends: ghc-prim
+
+  build-tools:     hsc2hs >= 0.67 && < 0.69
+    -- GHC 7 ships hsc2hs-0.67
 
   includes:        zlib.h
   ghc-options:     -Wall -fwarn-tabs
