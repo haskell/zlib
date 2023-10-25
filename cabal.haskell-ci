@@ -1,2 +1,3 @@
 apt: zlib1g-dev
 tests: >= 7.4
+haddock: >= 8.2
