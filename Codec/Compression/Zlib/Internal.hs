@@ -1,5 +1,6 @@
-{-# LANGUAGE CPP, RankNTypes, DeriveDataTypeable, DeriveGeneric, BangPatterns #-}
+{-# LANGUAGE CPP, RankNTypes, DeriveDataTypeable, BangPatterns #-}
 #if __GLASGOW_HASKELL__ >= 702
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE Trustworthy #-}
 #endif
 -----------------------------------------------------------------------------
