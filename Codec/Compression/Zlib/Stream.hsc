@@ -752,7 +752,7 @@ data WindowBits = WindowBits Int
                                     -- is is also the max value at 15.
   deriving
   ( Eq
-  , Ord -- ^ @since 0.7.0.0
+  , Ord
   , Show
   , Typeable
 #if __GLASGOW_HASKELL__ >= 702
