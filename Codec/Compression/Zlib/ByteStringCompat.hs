@@ -14,8 +14,7 @@ import Foreign.ForeignPtr (ForeignPtr)
 import GHC.ForeignPtr (plusForeignPtr)
 #else
 import GHC.ForeignPtr (ForeignPtr(ForeignPtr))
-import GHC.Types (Int (..))
-import GHC.Prim (plusAddr#)
+import GHC.Exts (Int (..), plusAddr#)
 #endif
 
 mkBS :: ForeignPtr Word8 -> Int -> Int -> ByteString
