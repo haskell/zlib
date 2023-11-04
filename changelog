@@ -1,5 +1,13 @@
 See also http://pvp.haskell.org/faq
 
+0.7.0.0 Andrew Lelechenko <andrew.lelechenko@gmail.com> TBD
+
+ * Bump bundled zlib to 1.3.
+ * Hide deprecated constructors of `CompressionLevel`, `Method`, `WindowBits`,
+   `MemoryLevel`, `CompressionStrategy` and `Format`.
+ * Add smart constructors `rleStrategy` and `fixedStrategy`.
+ * Add assorted `Eq`, `Ord`, `Typeable` and `Generic` instances.
+
 0.6.3.0 Andrew Lelechenko <andrew.lelechenko@gmail.com> May 2022
 
  * Bump bundled zlib to 1.2.12, #48
