@@ -45,6 +45,42 @@ jobs:
         cd zlib-*/
         cabal haddock
 
+  bundled-c-zlib:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        ghc: ['latest']
+    steps:
+    - uses: actions/checkout@v4
+    - uses: haskell-actions/setup@v2
+      id: setup-haskell-cabal
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        cabal-update: true
+    - uses: actions/cache@v3
+      name: Cache cabal stuff
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          dist-newstyle
+        key: ${{ runner.os }}-ghc-${{ steps.setup-haskell-cabal.outputs.ghc-version }}
+    - name: Build
+      run: |
+        cabal sdist -z -o .
+        cabal get zlib-*.tar.gz
+        cd zlib-*/
+        cabal build -c 'zlib +bundled-c-zlib'
+    - name: Test
+      run: |
+        cd zlib-*/
+        cabal test -c 'zlib +bundled-c-zlib'
+    - name: Haddock
+      run: |
+        cd zlib-*/
+        cabal haddock
+
   wasi:
     runs-on: ubuntu-latest
     env:
