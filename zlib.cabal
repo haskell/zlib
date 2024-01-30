@@ -35,7 +35,7 @@ tested-with:     GHC == 7.10.3
                , GHC == 9.6.3
                , GHC == 9.8.1
 
-extra-source-files: changelog
+extra-source-files: changelog.md
                     README.md
                     -- zlib C sources (for Windows)
                     cbits/crc32.h cbits/inffast.h cbits/inflate.h
