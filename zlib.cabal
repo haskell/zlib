@@ -68,7 +68,7 @@ flag bundled-c-zlib
   default:     False
   manual:      True
   description: Use the bundled zlib C sources.
-               For GHCJS this is the default.
+               For GHCJS and WASM this is the default.
 
 library
   exposed-modules: Codec.Compression.GZip,
@@ -103,7 +103,7 @@ library
   if flag(non-blocking-ffi)
     cpp-options:   -DNON_BLOCKING_FFI
 
-  if flag(bundled-c-zlib) || impl(ghcjs) || os(ghcjs)
+  if flag(bundled-c-zlib) || impl(ghcjs) || os(ghcjs) || arch(wasm32)
     -- We bundle a complete copy of the C sources of zlib-1.3.1,
     -- downloaded via update-c-sources.sh.
     c-sources:   cbits/adler32.c cbits/compress.c cbits/crc32.c
