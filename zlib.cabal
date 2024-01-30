@@ -120,7 +120,7 @@ library
       extra-libraries: z
     else
       -- However for the benefit of users of Windows (which does not have zlib
-      -- by default) we bundle a complete copy of the C sources of zlib-1.2.11
+      -- by default) we bundle a complete copy of the C sources of zlib-1.3.1
       c-sources:   cbits/adler32.c cbits/compress.c cbits/crc32.c
                    cbits/deflate.c cbits/infback.c
                    cbits/inffast.c cbits/inflate.c cbits/inftrees.c
