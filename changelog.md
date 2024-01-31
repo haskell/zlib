@@ -1,12 +1,16 @@
 See also http://pvp.haskell.org/faq
 
-0.7.0.0 Andrew Lelechenko <andrew.lelechenko@gmail.com> TBD
+0.7.0.0 Bodigrim <andrew.lelechenko@gmail.com> TBD
 
- * Bump bundled zlib to 1.3.1.
+ * Bump bundled `zlib` to 1.3.1.
  * Hide deprecated constructors of `CompressionLevel`, `Method`, `WindowBits`,
    `MemoryLevel`, `CompressionStrategy` and `Format`.
  * Add smart constructors `rleStrategy` and `fixedStrategy`.
  * Add assorted `Eq`, `Ord`, `Typeable` and `Generic` instances.
+ * Make flag `pkg-config` automatic and on by default.
+ * Make flag `bundled-c-zlib` to take priority over `pkg-config`.
+ * Do not force `bundled-c-zlib` on Windows, but force it for WASM.
+ * Strip `install-includes`, do not install any headers.
 
 0.6.3.0 Andrew Lelechenko <andrew.lelechenko@gmail.com> May 2022
 
