@@ -23,7 +23,7 @@ module Codec.Compression.Zlib (
   compress,
   decompress,
 
-  -- * Extended api with control over compression parameters
+  -- * Extended API with control over compression parameters
   compressWith,
   decompressWith,
 
@@ -64,7 +64,7 @@ import Codec.Compression.Zlib.Internal hiding (compress, decompress)
 
 -- | Decompress a stream of data in the zlib format.
 --
--- There are a number of errors that can occur. In each case an exception will
+-- There are a number of errors that can occur. In each case a 'DecompressError' will
 -- be thrown. The possible error conditions are:
 --
 -- * if the stream does not start with a valid gzip header
@@ -83,7 +83,7 @@ decompress :: ByteString -> ByteString
 decompress = decompressWith defaultDecompressParams
 
 
--- | Like 'decompress' but with the ability to specify various decompression
+-- | Like 'Codec.Compression.Zlib.decompress' but with the ability to specify various decompression
 -- parameters. Typical usage:
 --
 -- > decompressWith defaultCompressParams { ... }
@@ -105,7 +105,7 @@ compress :: ByteString -> ByteString
 compress = compressWith defaultCompressParams
 
 
--- | Like 'compress' but with the ability to specify various compression
+-- | Like 'Codec.Compression.Zlib.compress' but with the ability to specify various compression
 -- parameters. Typical usage:
 --
 -- > compressWith defaultCompressParams { ... }

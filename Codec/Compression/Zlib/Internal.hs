@@ -320,7 +320,8 @@ foldDecompressStreamWithInput chunk end err = \s lbs ->
 
 
 -- $incremental-compression
--- The pure 'compress' and 'decompress' functions are streaming in the sense
+-- The pure 'Codec.Compression.Zlib.Internal.compress' and
+-- 'Codec.Compression.Zlib.Internal.decompress' functions are streaming in the sense
 -- that they can produce output without demanding all input, however they need
 -- the input data stream as a lazy 'L.ByteString'. Having the input data
 -- stream as a lazy 'L.ByteString' often requires using lazy I\/O which is not

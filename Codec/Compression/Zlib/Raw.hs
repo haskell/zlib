@@ -19,7 +19,7 @@ module Codec.Compression.Zlib.Raw (
   compress,
   decompress,
 
-  -- * Extended api with control over compression parameters
+  -- * Extended API with control over compression parameters
   compressWith,
   decompressWith,
 
@@ -57,14 +57,20 @@ import Data.ByteString.Lazy (ByteString)
 import qualified Codec.Compression.Zlib.Internal as Internal
 import Codec.Compression.Zlib.Internal hiding (compress, decompress)
 
+-- | Decompress a stream of data in the raw deflate format.
 decompress :: ByteString -> ByteString
 decompress = decompressWith defaultDecompressParams
 
+-- | Like 'Codec.Compression.Zlib.Raw.decompress' but with the ability to specify various decompression
+-- parameters.
 decompressWith :: DecompressParams -> ByteString -> ByteString
 decompressWith = Internal.decompress rawFormat
 
+-- | Compress a stream of data into the raw deflate format.
 compress :: ByteString -> ByteString
 compress = compressWith defaultCompressParams
 
+-- | Like 'Codec.Compression.Zlib.Raw.compress' but with the ability to specify various decompression
+-- parameters.
 compressWith :: CompressParams -> ByteString -> ByteString
 compressWith = Internal.compress rawFormat

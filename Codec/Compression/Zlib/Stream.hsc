@@ -55,7 +55,7 @@ module Codec.Compression.Zlib.Stream (
     rleStrategy,
     fixedStrategy,
 
-  -- * The buisness
+  -- * The business
   deflate,
   inflate,
   Status(..),
@@ -94,10 +94,6 @@ module Codec.Compression.Zlib.Stream (
 #endif
 
   ) where
-
--- Note we don't use the MIN_VERSION_* macros here for compatibility with
--- old Cabal versions that come with old GHC, that didn't provide these
--- macros for .hsc files. So we use __GLASGOW_HASKELL__ as a proxy.
 
 import Foreign
          ( Word8, Ptr, nullPtr, plusPtr, castPtr, peekByteOff, pokeByteOff
@@ -697,13 +693,13 @@ fromCompressionLevel (CompressionLevel n)
 -- the maximum size.
 --
 -- The total amount of memory used depends on the window bits and the
--- 'MemoryLevel'. See the 'MemoryLevel' for the details.
+-- t'MemoryLevel'. See the t'MemoryLevel' for the details.
 --
 data WindowBits = WindowBits Int
                 | DefaultWindowBits -- This constructor must be last to make
                                     -- the Ord instance work. The Ord instance
                                     -- is used by the tests.
-                                    -- It makse sense because the default value
+                                    -- It makes sense because the default value
                                     -- is is also the max value at 15.
   deriving
   ( Eq
@@ -713,7 +709,7 @@ data WindowBits = WindowBits Int
   , Generic
   )
 
--- | The default 'WindowBits' is 15 which is also the maximum size.
+-- | The default t'WindowBits' is 15 which is also the maximum size.
 --
 defaultWindowBits :: WindowBits
 defaultWindowBits = WindowBits 15
@@ -737,14 +733,14 @@ fromWindowBits format bits = (formatModifier format) (checkWindowBits bits)
         formatModifier Raw        = negate
 
 
--- | The 'MemoryLevel' parameter specifies how much memory should be allocated
--- for the internal compression state. It is a tradeoff between memory usage,
+-- | The t'MemoryLevel' parameter specifies how much memory should be allocated
+-- for the internal compression state. It is a trade-off between memory usage,
 -- compression ratio and compression speed. Using more memory allows faster
 -- compression and a better compression ratio.
 --
--- The total amount of memory used for compression depends on the 'WindowBits'
--- and the 'MemoryLevel'. For decompression it depends only on the
--- 'WindowBits'. The totals are given by the functions:
+-- The total amount of memory used for compression depends on the t'WindowBits'
+-- and the t'MemoryLevel'. For decompression it depends only on the
+-- t'WindowBits'. The totals are given by the functions:
 --
 -- > compressTotal windowBits memLevel = 4 * 2^windowBits + 512 * 2^memLevel
 -- > decompressTotal windowBits = 2^windowBits
@@ -969,24 +965,6 @@ checkFormatSupported format = do
 -- The foreign imports
 
 newtype StreamState = StreamState (Ptr StreamState)
-
--- inflateInit2 and deflateInit2 are actually defined as macros in zlib.h
--- They are defined in terms of inflateInit2_ and deflateInit2_ passing two
--- additional arguments used to detect compatibility problems. They pass the
--- version of zlib as a char * and the size of the z_stream struct.
--- If we compile via C then we can avoid this hassle however that's not really
--- kosher since the Haskell FFI is defined at the C ABI level, not the C
--- language level. There is no requirement to compile via C and pick up C
--- headers. So it's much better if we can make it work properly and that'd
--- also allow compiling via ghc's ncg which is a good thing since the C
--- backend is not going to be around forever.
---
--- So we define c_inflateInit2 and c_deflateInit2 here as wrappers around
--- their _ counterparts and pass the extra args.
---
--- As of GHC 7.6, we can import macros directly using the CApiFFI extension.
--- This avoids the need for the hsc2hs #{const_str} construct, which means
--- hsc2hs can run in cross-compilation mode.
 
 ##ifdef NON_BLOCKING_FFI
 ##define SAFTY safe
