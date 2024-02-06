@@ -100,7 +100,7 @@ module Codec.Compression.Zlib.Stream (
 -- macros for .hsc files. So we use __GLASGOW_HASKELL__ as a proxy.
 
 import Foreign
-         ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff
+         ( Word8, Ptr, nullPtr, plusPtr, castPtr, peekByteOff, pokeByteOff
          , ForeignPtr, FinalizerPtr, mallocForeignPtrBytes, addForeignPtrFinalizer
          , withForeignPtr, touchForeignPtr, minusPtr )
 import Foreign.ForeignPtr.Unsafe ( unsafeForeignPtrToPtr )
@@ -108,6 +108,9 @@ import System.IO.Unsafe          ( unsafePerformIO )
 import Foreign
          ( finalizeForeignPtr )
 import Foreign.C
+#if MIN_VERSION_base(4,18,0)
+import Foreign.C.ConstPtr
+#endif
 import Data.ByteString.Internal (nullForeignPtr)
 import qualified Data.ByteString.Unsafe as B
 import Data.ByteString (ByteString)
@@ -119,6 +122,7 @@ import qualified Control.Monad.Fail as Fail
 import Control.Monad.ST.Strict
 import Control.Monad.ST.Unsafe
 import Control.Exception (assert)
+import Data.Coerce (coerce)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 #ifdef DEBUG
@@ -293,14 +297,14 @@ deflateSetDictionary :: ByteString -> Stream Status
 deflateSetDictionary dict = do
   err <- withStreamState $ \zstream ->
            B.unsafeUseAsCStringLen dict $ \(ptr, len) ->
-             c_deflateSetDictionary zstream ptr (fromIntegral len)
+             c_deflateSetDictionary zstream (castPtr ptr) (fromIntegral len)
   toStatus err
 
 inflateSetDictionary :: ByteString -> Stream Status
 inflateSetDictionary dict = do
   err <- withStreamState $ \zstream -> do
            B.unsafeUseAsCStringLen dict $ \(ptr, len) ->
-             c_inflateSetDictionary zstream ptr (fromIntegral len)
+             c_inflateSetDictionary zstream (castPtr ptr) (fromIntegral len)
   toStatus err
 
 -- | A hash of a custom compression dictionary. These hashes are used by
@@ -323,7 +327,7 @@ dictionaryHash :: DictionaryHash -> ByteString -> DictionaryHash
 dictionaryHash (DictHash adler) dict =
   unsafePerformIO $
     B.unsafeUseAsCStringLen dict $ \(ptr, len) ->
-      liftM DictHash $ c_adler32 adler ptr (fromIntegral len)
+      liftM DictHash $ c_adler32 adler (castPtr ptr) (fromIntegral len)
 
 -- | A zero 'DictionaryHash' to use as the initial value with 'dictionaryHash'.
 --
@@ -951,7 +955,7 @@ finalise = getStreamState >>= unsafeLiftIO . finalizeForeignPtr
 
 checkFormatSupported :: Format -> Stream ()
 checkFormatSupported format = do
-  version <- unsafeLiftIO (peekCAString =<< c_zlibVersion)
+  version <- unsafeLiftIO (coerce peekCAString =<< c_zlibVersion)
   case version of
     ('1':'.':'1':'.':_)
        | format == GZip
@@ -997,38 +1001,43 @@ foreign import capi unsafe "zlib.h deflateInit2"
   c_deflateInit2 :: StreamState
                  -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
 
-foreign import ccall SAFTY "zlib.h inflate"
+foreign import capi SAFTY "zlib.h inflate"
   c_inflate :: StreamState -> CInt -> IO CInt
 
-foreign import ccall unsafe "hs-zlib.h &_hs_zlib_inflateEnd"
+foreign import capi unsafe "hs-zlib.h &_hs_zlib_inflateEnd"
   c_inflateEnd :: FinalizerPtr StreamState
 
-foreign import ccall unsafe "zlib.h inflateReset"
+foreign import capi unsafe "zlib.h inflateReset"
   c_inflateReset :: StreamState -> IO CInt
 
-foreign import ccall unsafe "zlib.h deflateSetDictionary"
+foreign import capi unsafe "zlib.h deflateSetDictionary"
   c_deflateSetDictionary :: StreamState
-                         -> Ptr CChar
+                         -> Ptr CUChar
                          -> CUInt
                          -> IO CInt
 
-foreign import ccall unsafe "zlib.h inflateSetDictionary"
+foreign import capi unsafe "zlib.h inflateSetDictionary"
   c_inflateSetDictionary :: StreamState
-                         -> Ptr CChar
+                         -> Ptr CUChar
                          -> CUInt
                          -> IO CInt
 
-foreign import ccall SAFTY "zlib.h deflate"
+foreign import capi SAFTY "zlib.h deflate"
   c_deflate :: StreamState -> CInt -> IO CInt
 
-foreign import ccall unsafe "hs-zlib.h &_hs_zlib_deflateEnd"
+foreign import capi unsafe "hs-zlib.h &_hs_zlib_deflateEnd"
   c_deflateEnd :: FinalizerPtr StreamState
 
+#if MIN_VERSION_base(4,18,0)
+foreign import capi unsafe "zlib.h zlibVersion"
+  c_zlibVersion :: IO (ConstPtr CChar)
+#else
 foreign import ccall unsafe "zlib.h zlibVersion"
-  c_zlibVersion :: IO CString
+  c_zlibVersion :: IO (Ptr CChar)
+#endif
 
-foreign import ccall unsafe "zlib.h adler32"
+foreign import capi unsafe "zlib.h adler32"
   c_adler32 :: CULong
-            -> Ptr CChar
+            -> Ptr CUChar
             -> CUInt
             -> IO CULong
