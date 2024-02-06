@@ -14,7 +14,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [windows-latest, macOS-latest]
-        ghc: ['latest']
+        ghc: ['7.10', '8.0', '8.2', '8.4', 'latest']
     steps:
     - uses: actions/checkout@v4
     - uses: haskell-actions/setup@v2
@@ -35,7 +35,12 @@ jobs:
         cabal get zlib-*.tar.gz
         cd zlib-*/
         cabal build
+    - name: Test
+      run: |
+        cd zlib-*/
+        cabal test
     - name: Haddock
+      if: matrix.ghc != '7.10' && matrix.ghc != '8.0'
       run: |
         cd zlib-*/
         cabal haddock

@@ -90,6 +90,8 @@ library
                    bytestring >= 0.9 && < 0.13
 
   build-tools:     hsc2hs >= 0.67 && < 0.69
+  if os(windows) && impl(ghc < 8.4)
+    build-tools:     hsc2hs < 0.68.5
     -- GHC 7 ships hsc2hs-0.67
 
   -- use `includes:` to include them when compiling
