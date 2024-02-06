@@ -82,11 +82,14 @@ import Control.Monad.ST.Strict (stToIO)
 import qualified Control.Monad.ST.Unsafe as Unsafe (unsafeIOToST)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
+import Data.Bits (toIntegralSized)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
+import Data.Maybe (fromMaybe)
 import Data.Word (Word8)
+import Foreign.C (CUInt)
 import GHC.IO (noDuplicate)
 
 import qualified Codec.Compression.Zlib.Stream as Stream
@@ -162,7 +165,7 @@ defaultCompressParams = CompressParams {
   compressWindowBits  = Stream.defaultWindowBits,
   compressMemoryLevel = Stream.defaultMemoryLevel,
   compressStrategy    = Stream.defaultStrategy,
-  compressBufferSize  = defaultCompressBufferSize,
+  compressBufferSize  = cuint2int defaultCompressBufferSize,
   compressDictionary  = Nothing
 }
 
@@ -173,7 +176,7 @@ defaultCompressParams = CompressParams {
 defaultDecompressParams :: DecompressParams
 defaultDecompressParams = DecompressParams {
   decompressWindowBits = Stream.defaultWindowBits,
-  decompressBufferSize = defaultDecompressBufferSize,
+  decompressBufferSize = cuint2int defaultDecompressBufferSize,
   decompressDictionary = Nothing,
   decompressAllMembers = True
 }
@@ -181,9 +184,9 @@ defaultDecompressParams = DecompressParams {
 -- | The default chunk sizes for the output of compression and decompression
 -- are 16k and 32k respectively (less a small accounting overhead).
 --
-defaultCompressBufferSize, defaultDecompressBufferSize :: Int
-defaultCompressBufferSize   = 16 * 1024 - L.chunkOverhead
-defaultDecompressBufferSize = 32 * 1024 - L.chunkOverhead
+defaultCompressBufferSize, defaultDecompressBufferSize :: CUInt
+defaultCompressBufferSize   = 16 * 1024 - int2cuint L.chunkOverhead
+defaultDecompressBufferSize = 32 * 1024 - int2cuint L.chunkOverhead
 
 -- | The unfolding of the decompression process, where you provide a sequence
 -- of compressed data chunks as input and receive a sequence of uncompressed
@@ -482,6 +485,7 @@ compress   format params = foldCompressStreamWithInput
 compressST format params = compressStreamST  format params
 compressIO format params = compressStreamIO  format params
 
+-- | Chunk size must fit into 'CUInt'.
 compressStream :: Stream.Format -> CompressParams -> S.ByteString
                -> Stream (CompressStream Stream)
 compressStream format (CompressParams compLevel method bits memLevel
@@ -494,8 +498,8 @@ compressStream format (CompressParams compLevel method bits memLevel
         if length == 0
           then fillBuffers 20   --gzip header is 20 bytes, others even smaller
           else do
-            Stream.pushInputBuffer inFPtr 0 length
-            fillBuffers initChunkSize
+            Stream.pushInputBuffer inFPtr 0 (int2cuint length)
+            fillBuffers (int2cuint_capped initChunkSize)
 
   where
     -- we flick between two states:
@@ -504,7 +508,7 @@ compressStream format (CompressParams compLevel method bits memLevel
     --   * where both buffers are non-empty
     --       - in which case we compress until a buffer is empty
 
-  fillBuffers :: Int -> Stream (CompressStream Stream)
+  fillBuffers :: CUInt -> Stream (CompressStream Stream)
   fillBuffers outChunkSize = do
 #ifdef DEBUG
     Stream.consistencyCheck
@@ -521,7 +525,7 @@ compressStream format (CompressParams compLevel method bits memLevel
     assert (inputBufferEmpty || outputBufferFull) $ return ()
 
     when outputBufferFull $ do
-      outFPtr <- Stream.unsafeLiftIO (S.mallocByteString outChunkSize)
+      outFPtr <- Stream.unsafeLiftIO (S.mallocByteString (cuint2int outChunkSize))
       Stream.pushOutputBuffer outFPtr 0 outChunkSize
 
     if inputBufferEmpty
@@ -529,7 +533,7 @@ compressStream format (CompressParams compLevel method bits memLevel
            if length == 0
              then drainBuffers True
              else do
-                Stream.pushInputBuffer inFPtr 0 length
+                Stream.pushInputBuffer inFPtr 0 (int2cuint length)
                 drainBuffers False
       else drainBuffers False
 
@@ -610,7 +614,7 @@ decompress   format params = foldDecompressStreamWithInput
 decompressST format params = decompressStreamST  format params
 decompressIO format params = decompressStreamIO  format params
 
-
+-- | Chunk size must fit into 'CUInt'.
 decompressStream :: Stream.Format -> DecompressParams
                  -> Bool -> S.ByteString
                  -> Stream (DecompressStream Stream)
@@ -631,18 +635,17 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
             -- special case to avoid demanding more input again
             -- always an error anyway
             when outputBufferFull $ do
-              let outChunkSize = 1
-              outFPtr <- Stream.unsafeLiftIO (S.mallocByteString outChunkSize)
-              Stream.pushOutputBuffer outFPtr 0 outChunkSize
+              outFPtr <- Stream.unsafeLiftIO (S.mallocByteString 1)
+              Stream.pushOutputBuffer outFPtr 0 1
             drainBuffers True
           else do
-            Stream.pushInputBuffer inFPtr 0 length
+            Stream.pushInputBuffer inFPtr 0 (int2cuint length)
             -- Normally we start with no output buffer (so counts as full) but
             -- if we're resuming then we'll usually still have output buffer
             -- space available
             assert (if not resume then outputBufferFull else True) $ return ()
             if outputBufferFull
-              then fillBuffers initChunkSize
+              then fillBuffers (int2cuint_capped initChunkSize)
               else drainBuffers False
 
   where
@@ -652,7 +655,7 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
     --   * where both buffers are non-empty
     --       - in which case we compress until a buffer is empty
 
-  fillBuffers :: Int
+  fillBuffers :: CUInt
               -> Stream (DecompressStream Stream)
   fillBuffers outChunkSize = do
 #ifdef DEBUG
@@ -670,7 +673,7 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
     assert (inputBufferEmpty || outputBufferFull) $ return ()
 
     when outputBufferFull $ do
-      outFPtr <- Stream.unsafeLiftIO (S.mallocByteString outChunkSize)
+      outFPtr <- Stream.unsafeLiftIO (S.mallocByteString (cuint2int outChunkSize))
       Stream.pushOutputBuffer outFPtr 0 outChunkSize
 
     if inputBufferEmpty
@@ -679,7 +682,7 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
              if length == 0
                then drainBuffers True
                else do
-                 Stream.pushInputBuffer inFPtr 0 length
+                 Stream.pushInputBuffer inFPtr 0 (int2cuint length)
                  drainBuffers False
       else drainBuffers False
 
@@ -973,3 +976,14 @@ decompressStreamST format params =
     finaliseStreamError err zstate = do
         _ <- runStreamST Stream.finalise zstate
         return (DecompressStreamError err)
+
+-- | This one should not fail on 64-bit arch.
+cuint2int :: CUInt -> Int
+cuint2int n = fromMaybe (error $ "cuint2int: cannot cast " ++ show n) $ toIntegralSized n
+
+-- | This one could and will fail if chunks of ByteString are longer than 4G.
+int2cuint :: Int -> CUInt
+int2cuint n = fromMaybe (error $ "int2cuint: cannot cast " ++ show n) $ toIntegralSized n
+
+int2cuint_capped :: Int -> CUInt
+int2cuint_capped = fromMaybe maxBound . toIntegralSized . max 0

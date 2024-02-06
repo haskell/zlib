@@ -132,7 +132,7 @@ import Prelude hiding (length, Applicative(..))
 #include "zlib.h"
 
 
-pushInputBuffer :: ForeignPtr Word8 -> Int -> Int -> Stream ()
+pushInputBuffer :: ForeignPtr Word8 -> Int -> CUInt -> Stream ()
 pushInputBuffer inBuf' offset length = do
 
   -- must not push a new input buffer if the last one is not used up
@@ -172,7 +172,7 @@ popRemainingInputBuffer = do
   return (inBuf, inNext `minusPtr` unsafeForeignPtrToPtr inBuf, inAvail)
 
 
-pushOutputBuffer :: ForeignPtr Word8 -> Int -> Int -> Stream ()
+pushOutputBuffer :: ForeignPtr Word8 -> Int -> CUInt -> Stream ()
 pushOutputBuffer outBuf' offset length = do
 
   --must not push a new buffer if there is still data in the old one
@@ -290,7 +290,7 @@ inflateReset = do
   failIfError err
 
 
-
+-- | Dictionary length must fit into 'CUInt'.
 deflateSetDictionary :: ByteString -> Stream Status
 deflateSetDictionary dict = do
   err <- withStreamState $ \zstream ->
@@ -298,6 +298,7 @@ deflateSetDictionary dict = do
              c_deflateSetDictionary zstream (castPtr ptr) (int2cuint len)
   toStatus err
 
+-- | Dictionary length must fit into 'CUInt'.
 inflateSetDictionary :: ByteString -> Stream Status
 inflateSetDictionary dict = do
   err <- withStreamState $ \zstream -> do
@@ -321,6 +322,7 @@ newtype DictionaryHash = DictHash CULong
 --
 -- > foldl' dictionaryHash zeroDictionaryHash :: [ByteString] -> DictionaryHash
 --
+-- Dictionary length must fit into 'CUInt'.
 dictionaryHash :: DictionaryHash -> ByteString -> DictionaryHash
 dictionaryHash (DictHash adler) dict =
   unsafePerformIO $
@@ -873,9 +875,9 @@ withStreamState f = do
   stream <- getStreamState
   unsafeLiftIO (withForeignPtr stream (f . StreamState))
 
-setInAvail :: Int -> Stream ()
+setInAvail :: CUInt -> Stream ()
 setInAvail val = withStreamPtr $ \ptr ->
-  #{poke z_stream, avail_in} ptr (int2cuint val)
+  #{poke z_stream, avail_in} ptr val
 
 getInAvail :: Stream Int
 getInAvail = liftM cuint2int $
@@ -887,9 +889,9 @@ setInNext val = withStreamPtr (\ptr -> #{poke z_stream, next_in} ptr val)
 getInNext :: Stream (Ptr Word8)
 getInNext = withStreamPtr (#{peek z_stream, next_in})
 
-setOutFree :: Int -> Stream ()
+setOutFree :: CUInt -> Stream ()
 setOutFree val = withStreamPtr $ \ptr ->
-  #{poke z_stream, avail_out} ptr (int2cuint val)
+  #{poke z_stream, avail_out} ptr val
 
 getOutFree :: Stream Int
 getOutFree = liftM cuint2int $
