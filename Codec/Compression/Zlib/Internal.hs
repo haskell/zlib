@@ -1,8 +1,6 @@
 {-# LANGUAGE CPP, RankNTypes, DeriveDataTypeable, BangPatterns #-}
-#if __GLASGOW_HASKELL__ >= 702
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE Trustworthy #-}
-#endif
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) 2006-2015 Duncan Coutts
@@ -81,15 +79,9 @@ import Control.Monad (when)
 import Control.Exception (Exception, throw, assert)
 import Control.Monad.ST.Lazy hiding (stToIO)
 import Control.Monad.ST.Strict (stToIO)
-#if __GLASGOW_HASKELL__ >= 702
 import qualified Control.Monad.ST.Unsafe as Unsafe (unsafeIOToST)
-#else
-import qualified Control.Monad.ST.Strict as Unsafe (unsafeIOToST)
-#endif
 import Data.Typeable (Typeable)
-#if __GLASGOW_HASKELL__ >= 702
 import GHC.Generics (Generic)
-#endif
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString          as S
@@ -124,9 +116,7 @@ data CompressParams = CompressParams {
   , Ord      -- ^ @since 0.7.0.0
   , Show
   , Typeable -- ^ @since 0.7.0.0
-#if __GLASGOW_HASKELL__ >= 702
   , Generic  -- ^ @since 0.7.0.0
-#endif
   )
 
 -- | The full set of parameters for decompression. The defaults are
@@ -158,9 +148,7 @@ data DecompressParams = DecompressParams {
   , Ord      -- ^ @since 0.7.0.0
   , Show
   , Typeable -- ^ @since 0.7.0.0
-#if __GLASGOW_HASKELL__ >= 702
   , Generic  -- ^ @since 0.7.0.0
-#endif
   )
 
 -- | The default set of parameters for compression. This is typically used with
@@ -260,9 +248,7 @@ data DecompressError =
   ( Eq
   , Ord     -- ^ @since 0.7.0.0
   , Typeable
-#if __GLASGOW_HASKELL__ >= 702
   , Generic -- ^ @since 0.7.0.0
-#endif
            )
 
 instance Show DecompressError where

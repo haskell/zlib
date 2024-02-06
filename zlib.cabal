@@ -22,12 +22,7 @@ description:     This package provides a pure interface for compressing and
                  provides access to the full zlib feature set.
 build-type:      Simple
 
-tested-with:     GHC == 7.0.4
-               , GHC == 7.2.2
-               , GHC == 7.4.2
-               , GHC == 7.6.3
-               , GHC == 7.8.4
-               , GHC == 7.10.3
+tested-with:     GHC == 7.10.3
                , GHC == 8.0.2
                , GHC == 8.2.2
                , GHC == 8.4.4
@@ -88,15 +83,11 @@ library
 
   other-extensions: CPP, ForeignFunctionInterface, RankNTypes, BangPatterns,
                     DeriveDataTypeable
-  if impl(ghc >= 7.2)
-    other-extensions: DeriveGeneric
-  if impl(ghc >= 7.6)
-    other-extensions: CApiFFI
+  other-extensions: DeriveGeneric
+  other-extensions: CApiFFI
 
-  build-depends:   base >= 4.3 && < 4.20,
+  build-depends:   base >= 4.8 && < 4.20,
                    bytestring >= 0.9 && < 0.13
-  if impl(ghc < 7.6)
-    build-depends: ghc-prim < 0.3
 
   build-tools:     hsc2hs >= 0.67 && < 0.69
     -- GHC 7 ships hsc2hs-0.67

@@ -1,10 +1,6 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, DeriveDataTypeable #-}
-#if __GLASGOW_HASKELL__ >= 702
 {-# LANGUAGE DeriveGeneric #-}
-#endif
-#if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE CApiFFI #-}
-#endif
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) 2006-2015 Duncan Coutts
@@ -107,47 +103,29 @@ import Foreign
          ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff
          , ForeignPtr, FinalizerPtr, mallocForeignPtrBytes, addForeignPtrFinalizer
          , withForeignPtr, touchForeignPtr, minusPtr )
-#if __GLASGOW_HASKELL__ >= 702
 import Foreign.ForeignPtr.Unsafe ( unsafeForeignPtrToPtr )
 import System.IO.Unsafe          ( unsafePerformIO )
-#else
-import Foreign ( unsafeForeignPtrToPtr, unsafePerformIO )
-#endif
-#ifdef __GLASGOW_HASKELL__
 import Foreign
          ( finalizeForeignPtr )
-#endif
 import Foreign.C
 import Data.ByteString.Internal (nullForeignPtr)
 import qualified Data.ByteString.Unsafe as B
 import Data.ByteString (ByteString)
-#if !(__GLASGOW_HASKELL__ >= 710)
 import Control.Applicative (Applicative(..))
-#endif
 import Control.Monad (ap,liftM)
 #if MIN_VERSION_base(4,9,0)
 import qualified Control.Monad.Fail as Fail
 #endif
-#if __GLASGOW_HASKELL__ >= 702
-#if __GLASGOW_HASKELL__ >= 708
 import Control.Monad.ST.Strict
-#else
-import Control.Monad.ST.Strict hiding (unsafeIOToST)
-#endif
 import Control.Monad.ST.Unsafe
-#else
-import Control.Monad.ST.Strict
-#endif
 import Control.Exception (assert)
 import Data.Typeable (Typeable)
-#if __GLASGOW_HASKELL__ >= 702
 import GHC.Generics (Generic)
-#endif
 #ifdef DEBUG
 import System.IO (hPutStrLn, stderr)
 #endif
 
-import Prelude hiding (length)
+import Prelude hiding (length, Applicative(..))
 
 #include "zlib.h"
 
@@ -379,10 +357,6 @@ instance Monad Stream where
 --  m >>= f = (m `thenZ` \a -> consistencyCheck `thenZ_` returnZ a) `thenZ` f
   (>>)   = (*>)
 
-#if !MIN_VERSION_base(4,8,0)
-  return = pure
-#endif
-
 #if !MIN_VERSION_base(4,9,0)
   fail   = (finalise >>) . failZ
 #elif !MIN_VERSION_base(4,13,0)
@@ -603,9 +577,7 @@ fromFlush Block     = #{const Z_BLOCK}
 --
 data Format = GZip | Zlib | Raw | GZipOrZlib
   deriving (Eq, Ord, Enum, Bounded, Show, Typeable
-#if __GLASGOW_HASKELL__ >= 702
               , Generic
-#endif
            )
 
 -- | The gzip format uses a header with a checksum and some optional meta-data
@@ -647,9 +619,7 @@ formatSupportsDictionary _    = False
 --
 data Method = Deflated
   deriving (Eq, Ord, Enum, Bounded, Show, Typeable
-#if __GLASGOW_HASKELL__ >= 702
               , Generic
-#endif
            )
 
 -- | The only method supported in this version of zlib.
@@ -677,9 +647,7 @@ data CompressionLevel =
   , Ord -- ^ @since 0.7.0.0
   , Show
   , Typeable
-#if __GLASGOW_HASKELL__ >= 702
   , Generic
-#endif
   )
 
 -- | The default compression level is 6 (that is, biased towards higher
@@ -738,9 +706,7 @@ data WindowBits = WindowBits Int
   , Ord
   , Show
   , Typeable
-#if __GLASGOW_HASKELL__ >= 702
   , Generic
-#endif
   )
 
 -- | The default 'WindowBits' is 15 which is also the maximum size.
@@ -798,9 +764,7 @@ data MemoryLevel =
   , Ord -- ^ @since 0.7.0.0
   , Show
   , Typeable
-#if __GLASGOW_HASKELL__ >= 702
   , Generic
-#endif
   )
 
 -- | The default memory level. (Equivalent to @'memoryLevel' 8@)
@@ -850,9 +814,7 @@ data CompressionStrategy =
   | Fixed
   -- ^ @since 0.7.0.0
   deriving (Eq, Ord, Enum, Bounded, Show, Typeable
-#if __GLASGOW_HASKELL__ >= 702
               , Generic
-#endif
            )
 
 -- | Use this default compression strategy for normal data.
@@ -984,12 +946,8 @@ deflate_ flush = do
 -- longer be needed, for example if an error occurs or if the stream ends.
 --
 finalise :: Stream ()
-#ifdef __GLASGOW_HASKELL__
 --TODO: finalizeForeignPtr is ghc-only
 finalise = getStreamState >>= unsafeLiftIO . finalizeForeignPtr
-#else
-finalise = return ()
-#endif
 
 checkFormatSupported :: Format -> Stream ()
 checkFormatSupported format = do
@@ -1032,34 +990,12 @@ newtype StreamState = StreamState (Ptr StreamState)
 ##define SAFTY unsafe
 ##endif
 
-#if __GLASGOW_HASKELL__ >= 706
 foreign import capi unsafe "zlib.h inflateInit2"
   c_inflateInit2 :: StreamState -> CInt -> IO CInt
  
 foreign import capi unsafe "zlib.h deflateInit2"
   c_deflateInit2 :: StreamState
                  -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
-#else
-foreign import ccall unsafe "zlib.h inflateInit2_"
-  c_inflateInit2_ :: StreamState -> CInt -> Ptr CChar -> CInt -> IO CInt
-
-c_inflateInit2 :: StreamState -> CInt -> IO CInt
-c_inflateInit2 z n =
-  withCAString #{const_str ZLIB_VERSION} $ \versionStr ->
-    c_inflateInit2_ z n versionStr (#{const sizeof(z_stream)} :: CInt)
-
-foreign import ccall unsafe "zlib.h deflateInit2_"
-  c_deflateInit2_ :: StreamState
-                  -> CInt -> CInt -> CInt -> CInt -> CInt
-                  -> Ptr CChar -> CInt
-                  -> IO CInt
-
-c_deflateInit2 :: StreamState
-               -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
-c_deflateInit2 z a b c d e =
-  withCAString #{const_str ZLIB_VERSION} $ \versionStr ->
-    c_deflateInit2_ z a b c d e versionStr (#{const sizeof(z_stream)} :: CInt)
-#endif
 
 foreign import ccall SAFTY "zlib.h inflate"
   c_inflate :: StreamState -> CInt -> IO CInt
