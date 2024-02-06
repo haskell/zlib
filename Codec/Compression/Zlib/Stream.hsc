@@ -293,14 +293,14 @@ deflateSetDictionary :: ByteString -> Stream Status
 deflateSetDictionary dict = do
   err <- withStreamState $ \zstream ->
            B.unsafeUseAsCStringLen dict $ \(ptr, len) ->
-             c_deflateSetDictionary zstream (castPtr ptr) (fromIntegral len)
+             c_deflateSetDictionary zstream (castPtr ptr) (int2cuint len)
   toStatus err
 
 inflateSetDictionary :: ByteString -> Stream Status
 inflateSetDictionary dict = do
   err <- withStreamState $ \zstream -> do
            B.unsafeUseAsCStringLen dict $ \(ptr, len) ->
-             c_inflateSetDictionary zstream (castPtr ptr) (fromIntegral len)
+             c_inflateSetDictionary zstream (castPtr ptr) (int2cuint len)
   toStatus err
 
 -- | A hash of a custom compression dictionary. These hashes are used by
@@ -323,7 +323,7 @@ dictionaryHash :: DictionaryHash -> ByteString -> DictionaryHash
 dictionaryHash (DictHash adler) dict =
   unsafePerformIO $
     B.unsafeUseAsCStringLen dict $ \(ptr, len) ->
-      liftM DictHash $ c_adler32 adler (castPtr ptr) (fromIntegral len)
+      liftM DictHash $ c_adler32 adler (castPtr ptr) (int2cuint len)
 
 -- | A zero 'DictionaryHash' to use as the initial value with 'dictionaryHash'.
 --
@@ -679,7 +679,7 @@ fromCompressionLevel NoCompression        = 0
 fromCompressionLevel BestSpeed            = 1
 fromCompressionLevel BestCompression      = 9
 fromCompressionLevel (CompressionLevel n)
-           | n >= 0 && n <= 9 = fromIntegral n
+           | n >= 0 && n <= 9 = int2cint n
            | otherwise        = error "CompressLevel must be in the range 1..9"
 
 
@@ -725,7 +725,7 @@ fromWindowBits :: Format -> WindowBits-> CInt
 fromWindowBits format bits = (formatModifier format) (checkWindowBits bits)
   where checkWindowBits DefaultWindowBits = 15
         checkWindowBits (WindowBits n)
-          | n >= 9 && n <= 15 = fromIntegral n
+          | n >= 9 && n <= 15 = int2cint n
           | otherwise         = error "WindowBits must be in the range 9..15"
         formatModifier Zlib       = id
         formatModifier GZip       = (+16)
@@ -796,7 +796,7 @@ fromMemoryLevel DefaultMemoryLevel = 8
 fromMemoryLevel MinMemoryLevel     = 1
 fromMemoryLevel MaxMemoryLevel     = 9
 fromMemoryLevel (MemoryLevel n)
-         | n >= 1 && n <= 9 = fromIntegral n
+         | n >= 1 && n <= 9 = int2cint n
          | otherwise        = error "MemoryLevel must be in the range 1..9"
 
 
@@ -873,10 +873,10 @@ withStreamState f = do
 
 setInAvail :: Int -> Stream ()
 setInAvail val = withStreamPtr $ \ptr ->
-  #{poke z_stream, avail_in} ptr (fromIntegral val :: CUInt)
+  #{poke z_stream, avail_in} ptr (int2cuint val)
 
 getInAvail :: Stream Int
-getInAvail = liftM (fromIntegral :: CUInt -> Int) $
+getInAvail = liftM cuint2int $
   withStreamPtr (#{peek z_stream, avail_in})
 
 setInNext :: Ptr Word8 -> Stream ()
@@ -887,10 +887,10 @@ getInNext = withStreamPtr (#{peek z_stream, next_in})
 
 setOutFree :: Int -> Stream ()
 setOutFree val = withStreamPtr $ \ptr ->
-  #{poke z_stream, avail_out} ptr (fromIntegral val :: CUInt)
+  #{poke z_stream, avail_out} ptr (int2cuint val)
 
 getOutFree :: Stream Int
-getOutFree = liftM (fromIntegral :: CUInt -> Int) $
+getOutFree = liftM cuint2int $
   withStreamPtr (#{peek z_stream, avail_out})
 
 setOutNext  :: Ptr Word8 -> Stream ()
@@ -905,7 +905,7 @@ inflateInit :: Format -> WindowBits -> Stream ()
 inflateInit format bits = do
   checkFormatSupported format
   err <- withStreamState $ \zstream ->
-    c_inflateInit2 zstream (fromIntegral (fromWindowBits format bits))
+    c_inflateInit2 zstream (fromWindowBits format bits)
   failIfError err
   getStreamState >>= unsafeLiftIO . addForeignPtrFinalizer c_inflateEnd
 
@@ -960,6 +960,15 @@ checkFormatSupported format = do
              ++ " 'gzip' format via the in-memory api, only the 'raw' and "
              ++ " 'zlib' formats."
     _ -> return ()
+
+cuint2int :: CUInt -> Int
+cuint2int = fromIntegral
+
+int2cuint :: Int -> CUInt
+int2cuint = fromIntegral
+
+int2cint :: Int -> CInt
+int2cint = fromIntegral
 
 ----------------------
 -- The foreign imports
