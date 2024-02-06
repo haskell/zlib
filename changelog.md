@@ -13,6 +13,7 @@ See also http://pvp.haskell.org/faq
  * Strip `install-includes`, do not install any headers.
  * Export `DecompressError` from non-internal modules.
  * Fix compression/decompression of `ByteString` chunks > 4G.
+ * Flip flag `non-blocking-ffi` to be `True` be default.
 
 0.6.3.0 Andrew Lelechenko <andrew.lelechenko@gmail.com> May 2022
 

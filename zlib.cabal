@@ -56,7 +56,7 @@ source-repository head
   location: https://github.com/haskell/zlib.git
 
 flag non-blocking-ffi
-  default:     False
+  default:     True
   manual:      True
   description: The (de)compression calls can sometimes take a long time, which
                prevents other Haskell threads running. Enabling this flag
