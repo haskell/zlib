@@ -582,7 +582,10 @@ compressStream format (CompressParams compLevel method bits memLevel
   -- and if the format supports it (zlib and raw, not gzip).
   setDictionary :: Maybe S.ByteString -> Stream ()
   setDictionary (Just dict)
-    | Stream.formatSupportsDictionary format = do
+    | Stream.formatSupportsDictionary format = case int2cuint_safe (S.length dict) of
+      Nothing ->
+        fail "error when setting deflate dictionary, its length does not fit into CUInt"
+      Just{} -> do
         status <- Stream.deflateSetDictionary dict
         case status of
           Stream.Ok          -> return ()
@@ -743,14 +746,16 @@ decompressStream format (DecompressParams bits initChunkSize mdict allMembers)
                 -> Stream (Maybe (DecompressStream Stream))
   setDictionary _adler Nothing =
     return $ Just (DecompressStreamError DictionaryRequired)
-  setDictionary _adler (Just dict) = do
-    status <- Stream.inflateSetDictionary dict
-    case status of
-      Stream.Ok -> return Nothing
-      Stream.Error Stream.DataError _   ->
-        return $ Just (DecompressStreamError DictionaryMismatch)
-      _ -> fail "error when setting inflate dictionary"
-
+  setDictionary _adler (Just dict) = case int2cuint_safe (S.length dict) of
+    Nothing ->
+      fail "error when setting inflate dictionary, its length does not fit into CUInt"
+    Just{} -> do
+      status <- Stream.inflateSetDictionary dict
+      case status of
+        Stream.Ok -> return Nothing
+        Stream.Error Stream.DataError _   ->
+          return $ Just (DecompressStreamError DictionaryMismatch)
+        _ -> fail "error when setting inflate dictionary"
 
 ------------------------------------------------------------------------------
 
@@ -987,3 +992,6 @@ int2cuint n = fromMaybe (error $ "int2cuint: cannot cast " ++ show n) $ toIntegr
 
 int2cuint_capped :: Int -> CUInt
 int2cuint_capped = fromMaybe maxBound . toIntegralSized . max 0
+
+int2cuint_safe :: Int -> Maybe CUInt
+int2cuint_safe = toIntegralSized
