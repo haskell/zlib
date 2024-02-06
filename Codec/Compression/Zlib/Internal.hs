@@ -303,7 +303,7 @@ foldDecompressStreamWithInput :: (S.ByteString -> a -> a)
                               -> L.ByteString
                               -> a
 foldDecompressStreamWithInput chunk end err = \s lbs ->
-    runST (fold s (L.toChunks lbs))
+    runST (fold s (toLimitedChunks lbs))
   where
     fold (DecompressInputRequired next) [] =
       next S.empty >>= \strm -> fold strm []
@@ -445,7 +445,7 @@ foldCompressStreamWithInput :: (S.ByteString -> a -> a)
                             -> L.ByteString
                             -> a
 foldCompressStreamWithInput chunk end = \s lbs ->
-    runST (fold s (L.toChunks lbs))
+    runST (fold s (toLimitedChunks lbs))
   where
     fold (CompressInputRequired next) [] =
       next S.empty >>= \strm -> fold strm []
@@ -473,10 +473,12 @@ compress   :: Stream.Format -> CompressParams -> L.ByteString -> L.ByteString
 -- | Incremental compression in the 'ST' monad. Using 'ST' makes it possible
 -- to write pure /lazy/ functions while making use of incremental compression.
 --
+-- Chunk size must fit into 'CUInt'.
 compressST :: Stream.Format -> CompressParams -> CompressStream (ST s)
 
 -- | Incremental compression in the 'IO' monad.
 --
+-- Chunk size must fit into 'CUInt'.
 compressIO :: Stream.Format -> CompressParams -> CompressStream IO
 
 compress   format params = foldCompressStreamWithInput
@@ -605,10 +607,12 @@ decompress   :: Stream.Format -> DecompressParams -> L.ByteString -> L.ByteStrin
 -- | Incremental decompression in the 'ST' monad. Using 'ST' makes it possible
 -- to write pure /lazy/ functions while making use of incremental decompression.
 --
+-- Chunk size must fit into 'CUInt'.
 decompressST :: Stream.Format -> DecompressParams -> DecompressStream (ST s)
 
 -- | Incremental decompression in the 'IO' monad.
 --
+-- Chunk size must fit into 'CUInt'.
 decompressIO :: Stream.Format -> DecompressParams -> DecompressStream IO
 
 decompress   format params = foldDecompressStreamWithInput
@@ -769,6 +773,7 @@ runStreamIO :: Stream a -> Stream.State RealWorld -> IO (a, Stream.State RealWor
 runStreamST strm zstate = strictToLazyST (Unsafe.unsafeIOToST noDuplicate >> Stream.runStream strm zstate)
 runStreamIO strm zstate = stToIO (Stream.runStream strm zstate)
 
+-- | Chunk size must fit into 'CUInt'.
 compressStreamIO :: Stream.Format -> CompressParams -> CompressStream IO
 compressStreamIO format params =
     CompressInputRequired {
@@ -794,6 +799,7 @@ compressStreamIO format params =
 
     go CompressStreamEnd _ = CompressStreamEnd
 
+-- | Chunk size must fit into 'CUInt'.
 compressStreamST :: Stream.Format -> CompressParams -> CompressStream (ST s)
 compressStreamST format params =
     CompressInputRequired {
@@ -820,6 +826,7 @@ compressStreamST format params =
     go CompressStreamEnd _ = CompressStreamEnd
 
 
+-- | Chunk size must fit into 'CUInt'.
 decompressStreamIO :: Stream.Format -> DecompressParams -> DecompressStream IO
 decompressStreamIO format params =
       DecompressInputRequired $ \chunk -> do
@@ -899,6 +906,7 @@ decompressStreamIO format params =
         return (DecompressStreamError err)
 
 
+-- | Chunk size must fit into 'CUInt'.
 decompressStreamST :: Stream.Format -> DecompressParams -> DecompressStream (ST s)
 decompressStreamST format params =
       DecompressInputRequired $ \chunk -> do
@@ -995,3 +1003,10 @@ int2cuint_capped = fromMaybe maxBound . toIntegralSized . max 0
 
 int2cuint_safe :: Int -> Maybe CUInt
 int2cuint_safe = toIntegralSized
+
+toLimitedChunks :: L.ByteString -> [S.ByteString]
+toLimitedChunks L.Empty = []
+toLimitedChunks (L.Chunk x xs) = case int2cuint_safe (S.length x) of
+  Nothing -> let (y, z) = S.splitAt (cuint2int (maxBound :: CUInt)) x in
+    y : toLimitedChunks (L.Chunk z xs)
+  Just{} -> x : toLimitedChunks xs

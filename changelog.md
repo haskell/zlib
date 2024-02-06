@@ -12,6 +12,7 @@ See also http://pvp.haskell.org/faq
  * Do not force `bundled-c-zlib` on Windows, but force it for WASM.
  * Strip `install-includes`, do not install any headers.
  * Export `DecompressError` from non-internal modules.
+ * Fix compression/decompression of `ByteString` chunks > 4G.
 
 0.6.3.0 Andrew Lelechenko <andrew.lelechenko@gmail.com> May 2022
 
