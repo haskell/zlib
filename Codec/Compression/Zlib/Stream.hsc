@@ -118,7 +118,9 @@ import qualified Control.Monad.Fail as Fail
 import Control.Monad.ST.Strict
 import Control.Monad.ST.Unsafe
 import Control.Exception (assert)
+import Data.Bits (toIntegralSized)
 import Data.Coerce (coerce)
+import Data.Maybe (fromMaybe)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 #ifdef DEBUG
@@ -961,14 +963,17 @@ checkFormatSupported format = do
              ++ " 'zlib' formats."
     _ -> return ()
 
+-- | This one should not fail on 64-bit arch.
 cuint2int :: CUInt -> Int
-cuint2int = fromIntegral
+cuint2int n = fromMaybe (error $ "cuint2int: cannot cast " ++ show n) $ toIntegralSized n
 
+-- | This one could and will fail if chunks of ByteString are longer than 4G.
 int2cuint :: Int -> CUInt
-int2cuint = fromIntegral
+int2cuint n = fromMaybe (error $ "int2cuint: cannot cast " ++ show n) $ toIntegralSized n
 
+-- | This one could fail in theory, but is used only on arguments 0..9 or 0..15.
 int2cint :: Int -> CInt
-int2cint = fromIntegral
+int2cint n = fromMaybe (error $ "int2cint: cannot cast " ++ show n) $ toIntegralSized n
 
 ----------------------
 -- The foreign imports
