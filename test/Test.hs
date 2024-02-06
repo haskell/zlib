@@ -17,6 +17,7 @@ import Utils ()
 import Control.Monad
 import Control.Monad.ST.Lazy (ST)
 import Control.Exception
+import Data.Bits (finiteBitSize, shiftL)
 import qualified Data.ByteString.Char8 as BS.Char8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString      as BS
@@ -53,7 +54,8 @@ main = defaultMain $
       testProperty "multiple gzip members"     test_multiple_members,
       testProperty "check small input chunks"  test_small_chunks,
       testProperty "check empty input"         test_empty,
-      testProperty "check exception raised"    test_exception
+      testProperty "check exception raised"    test_exception,
+      testProperty "check compress large chunk" test_compress_large_chunk
     ]
   ]
 
@@ -284,6 +286,14 @@ test_exception = ioProperty $ do
   return $ case len of
     Left err -> assertDataFormatError "incorrect data check" err
     Right{} -> counterexample "expected exception" False
+
+test_compress_large_chunk :: Property
+test_compress_large_chunk = GZip.decompress (GZip.compress xs) === xs
+  where
+    len = case finiteBitSize (0 :: Int) of
+      64 -> (1 `shiftL` 32) + 1
+      _ -> 0 -- ignore it
+    xs = BL.fromStrict $ BS.replicate len 0
 
 toStrict :: BL.ByteString -> BS.ByteString
 #if MIN_VERSION_bytestring(0,10,0)
