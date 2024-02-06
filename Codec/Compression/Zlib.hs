@@ -22,6 +22,7 @@ module Codec.Compression.Zlib (
   -- * Simple compression and decompression
   compress,
   decompress,
+  DecompressError(..),
 
   -- * Extended API with control over compression parameters
   compressWith,
@@ -62,16 +63,8 @@ import qualified Codec.Compression.Zlib.Internal as Internal
 import Codec.Compression.Zlib.Internal hiding (compress, decompress)
 
 
--- | Decompress a stream of data in the zlib format.
---
--- There are a number of errors that can occur. In each case a 'DecompressError' will
--- be thrown. The possible error conditions are:
---
--- * if the stream does not start with a valid gzip header
---
--- * if the compressed stream is corrupted
---
--- * if the compressed stream ends prematurely
+-- | Decompress a stream of data in the zlib format,
+-- throw 'DecompressError' on failure.
 --
 -- Note that the decompression is performed /lazily/. Errors in the data stream
 -- may not be detected until the end of the stream is demanded (since it is

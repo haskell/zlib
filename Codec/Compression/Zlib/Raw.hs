@@ -18,6 +18,7 @@ module Codec.Compression.Zlib.Raw (
   -- * Simple compression and decompression
   compress,
   decompress,
+  DecompressError(..),
 
   -- * Extended API with control over compression parameters
   compressWith,

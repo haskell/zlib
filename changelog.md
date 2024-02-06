@@ -11,6 +11,7 @@ See also http://pvp.haskell.org/faq
  * Make flag `bundled-c-zlib` to take priority over `pkg-config`.
  * Do not force `bundled-c-zlib` on Windows, but force it for WASM.
  * Strip `install-includes`, do not install any headers.
+ * Export `DecompressError` from non-internal modules.
 
 0.6.3.0 Andrew Lelechenko <andrew.lelechenko@gmail.com> May 2022
 
