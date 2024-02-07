@@ -290,7 +290,7 @@ inflateReset = do
   failIfError err
 
 
--- | Dictionary length must fit into 'CUInt'.
+-- | Dictionary length must fit into t'CUInt'.
 deflateSetDictionary :: ByteString -> Stream Status
 deflateSetDictionary dict = do
   err <- withStreamState $ \zstream ->
@@ -298,7 +298,7 @@ deflateSetDictionary dict = do
              c_deflateSetDictionary zstream (castPtr ptr) (int2cuint len)
   toStatus err
 
--- | Dictionary length must fit into 'CUInt'.
+-- | Dictionary length must fit into t'CUInt'.
 inflateSetDictionary :: ByteString -> Stream Status
 inflateSetDictionary dict = do
   err <- withStreamState $ \zstream -> do
@@ -322,7 +322,7 @@ newtype DictionaryHash = DictHash CULong
 --
 -- > foldl' dictionaryHash zeroDictionaryHash :: [ByteString] -> DictionaryHash
 --
--- Dictionary length must fit into 'CUInt'.
+-- Dictionary length must fit into t'CUInt'.
 dictionaryHash :: DictionaryHash -> ByteString -> DictionaryHash
 dictionaryHash (DictHash adler) dict =
   unsafePerformIO $

@@ -15,7 +15,7 @@ See also http://pvp.haskell.org/faq
  * Fix compression/decompression of `ByteString` chunks > 4G.
  * Flip flag `non-blocking-ffi` to be `True` be default.
 
-0.6.3.0 Andrew Lelechenko <andrew.lelechenko@gmail.com> May 2022
+0.6.3.0 Bodigrim <andrew.lelechenko@gmail.com> May 2022
 
  * Bump bundled zlib to 1.2.12, #48
  * Support base-4.17
