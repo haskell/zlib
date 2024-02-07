@@ -60,7 +60,7 @@ module Codec.Compression.Zlib.Internal (
   Stream.WindowBits(..),
     Stream.defaultWindowBits,
     Stream.windowBits,
-  Stream.MemoryLevel,
+  Stream.MemoryLevel(..),
     Stream.defaultMemoryLevel,
     Stream.minMemoryLevel,
     Stream.maxMemoryLevel,

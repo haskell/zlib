@@ -39,7 +39,7 @@ module Codec.Compression.Zlib.Raw (
   WindowBits(..),
     defaultWindowBits,
     windowBits,
-  MemoryLevel,
+  MemoryLevel(..),
     defaultMemoryLevel,
     minMemoryLevel,
     maxMemoryLevel,

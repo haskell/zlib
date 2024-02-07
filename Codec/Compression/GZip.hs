@@ -55,7 +55,7 @@ module Codec.Compression.GZip (
   WindowBits(..),
     defaultWindowBits,
     windowBits,
-  MemoryLevel,
+  MemoryLevel(..),
     defaultMemoryLevel,
     minMemoryLevel,
     maxMemoryLevel,

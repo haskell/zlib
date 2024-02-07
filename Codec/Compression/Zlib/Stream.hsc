@@ -43,7 +43,7 @@ module Codec.Compression.Zlib.Stream (
   WindowBits(..),
     defaultWindowBits,
     windowBits,
-  MemoryLevel,
+  MemoryLevel(..),
     defaultMemoryLevel,
     minMemoryLevel,
     maxMemoryLevel,
@@ -758,11 +758,7 @@ fromWindowBits format bits = (formatModifier format) (checkWindowBits bits)
 -- Decompression takes less memory, the default @windowBits = 15@ corresponds
 -- to just @32Kb@.
 --
-data MemoryLevel =
-    DefaultMemoryLevel
-  | MinMemoryLevel
-  | MaxMemoryLevel
-  | MemoryLevel Int
+newtype MemoryLevel = MemoryLevel Int
   deriving
   ( Eq
   , Ord -- ^ @since 0.7.0.0
@@ -771,24 +767,25 @@ data MemoryLevel =
   , Generic
   )
 
--- | The default memory level. (Equivalent to @'memoryLevel' 8@)
+-- | The default t'MemoryLevel'. Equivalent to @'memoryLevel' 8@.
 --
 defaultMemoryLevel :: MemoryLevel
 defaultMemoryLevel = MemoryLevel 8
 
 -- | Use minimum memory. This is slow and reduces the compression ratio.
--- (Equivalent to @'memoryLevel' 1@)
+-- Equivalent to @'memoryLevel' 1@.
 --
 minMemoryLevel :: MemoryLevel
 minMemoryLevel = MemoryLevel 1
 
 -- | Use maximum memory for optimal compression speed.
--- (Equivalent to @'memoryLevel' 9@)
+-- Equivalent to @'memoryLevel' 9@.
 --
 maxMemoryLevel :: MemoryLevel
 maxMemoryLevel = MemoryLevel 9
 
--- | A specific level in the range @1..9@
+-- | A specific memory level in the range @1..9@.
+-- Throws an error for arguments outside of this range.
 --
 memoryLevel :: Int -> MemoryLevel
 memoryLevel n
@@ -796,9 +793,6 @@ memoryLevel n
   | otherwise        = error "MemoryLevel must be in the range 1..9"
 
 fromMemoryLevel :: MemoryLevel -> CInt
-fromMemoryLevel DefaultMemoryLevel = 8
-fromMemoryLevel MinMemoryLevel     = 1
-fromMemoryLevel MaxMemoryLevel     = 9
 fromMemoryLevel (MemoryLevel n)
          | n >= 1 && n <= 9 = int2cint n
          | otherwise        = error "MemoryLevel must be in the range 1..9"

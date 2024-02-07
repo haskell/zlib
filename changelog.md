@@ -15,6 +15,7 @@ See also http://pvp.haskell.org/faq
  * Fix compression/decompression of `ByteString` chunks > 4G.
  * Flip flag `non-blocking-ffi` to be `True` be default.
  * Make `WindowBits` a newtype over `Int`.
+ * Make `MemoryLevel` a newtype over `Int`.
 
 0.6.3.0 Bodigrim <andrew.lelechenko@gmail.com> May 2022
 
