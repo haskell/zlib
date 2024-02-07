@@ -57,7 +57,7 @@ module Codec.Compression.Zlib.Internal (
     Stream.compressionLevel,
   Stream.Method,
     Stream.deflateMethod,
-  Stream.WindowBits,
+  Stream.WindowBits(..),
     Stream.defaultWindowBits,
     Stream.windowBits,
   Stream.MemoryLevel,

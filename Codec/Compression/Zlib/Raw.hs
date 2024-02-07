@@ -36,7 +36,7 @@ module Codec.Compression.Zlib.Raw (
     compressionLevel,
   Method,
     deflateMethod,
-  WindowBits,
+  WindowBits(..),
     defaultWindowBits,
     windowBits,
   MemoryLevel,

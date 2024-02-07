@@ -52,7 +52,7 @@ module Codec.Compression.GZip (
     compressionLevel,
   Method,
     deflateMethod,
-  WindowBits,
+  WindowBits(..),
     defaultWindowBits,
     windowBits,
   MemoryLevel,

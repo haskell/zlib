@@ -40,7 +40,7 @@ module Codec.Compression.Zlib.Stream (
     compressionLevel,
   Method,
     deflateMethod,
-  WindowBits,
+  WindowBits(..),
     defaultWindowBits,
     windowBits,
   MemoryLevel,
@@ -699,12 +699,7 @@ fromCompressionLevel (CompressionLevel n)
 -- The total amount of memory used depends on the window bits and the
 -- t'MemoryLevel'. See the t'MemoryLevel' for the details.
 --
-data WindowBits = WindowBits Int
-                | DefaultWindowBits -- This constructor must be last to make
-                                    -- the Ord instance work. The Ord instance
-                                    -- is used by the tests.
-                                    -- It makes sense because the default value
-                                    -- is is also the max value at 15.
+newtype WindowBits = WindowBits Int
   deriving
   ( Eq
   , Ord
@@ -713,22 +708,27 @@ data WindowBits = WindowBits Int
   , Generic
   )
 
--- | The default t'WindowBits' is 15 which is also the maximum size.
+-- zlib manual (https://www.zlib.net/manual.html#Advanced) says that WindowBits
+-- could be in the range 8..15, but for some reason we require 9..15.
+-- Could it be that older versions of zlib had a tighter limit?..
+
+-- | The default t'WindowBits'. Equivalent to @'windowBits' 15@.
+-- which is also the maximum size.
 --
 defaultWindowBits :: WindowBits
 defaultWindowBits = WindowBits 15
 
--- | A specific compression window size, specified in bits in the range @9..15@
+-- | A specific compression window size, specified in bits in the range @9..15@.
+-- Throws an error for arguments outside of this range.
 --
 windowBits :: Int -> WindowBits
 windowBits n
   | n >= 9 && n <= 15 = WindowBits n
   | otherwise         = error "WindowBits must be in the range 9..15"
 
-fromWindowBits :: Format -> WindowBits-> CInt
+fromWindowBits :: Format -> WindowBits -> CInt
 fromWindowBits format bits = (formatModifier format) (checkWindowBits bits)
-  where checkWindowBits DefaultWindowBits = 15
-        checkWindowBits (WindowBits n)
+  where checkWindowBits (WindowBits n)
           | n >= 9 && n <= 15 = int2cint n
           | otherwise         = error "WindowBits must be in the range 9..15"
         formatModifier Zlib       = id

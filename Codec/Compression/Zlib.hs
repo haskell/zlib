@@ -40,7 +40,7 @@ module Codec.Compression.Zlib (
     compressionLevel,
   Method,
     deflateMethod,
-  WindowBits,
+  WindowBits(..),
     defaultWindowBits,
     windowBits,
   MemoryLevel,
