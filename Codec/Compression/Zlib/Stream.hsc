@@ -32,7 +32,7 @@ module Codec.Compression.Zlib.Stream (
     rawFormat,
     gzipOrZlibFormat,
     formatSupportsDictionary,
-  CompressionLevel,
+  CompressionLevel(..),
     defaultCompression,
     noCompression,
     bestSpeed,
@@ -640,12 +640,7 @@ fromMethod Deflated = #{const Z_DEFLATED}
 -- is a trade-off between the amount of compression and the time required to do
 -- the compression.
 --
-data CompressionLevel = 
-    DefaultCompression
-  | NoCompression
-  | BestSpeed
-  | BestCompression
-  | CompressionLevel Int
+newtype CompressionLevel = CompressionLevel Int
   deriving
   ( Eq
   , Ord -- ^ @since 0.7.0.0
@@ -654,37 +649,43 @@ data CompressionLevel =
   , Generic
   )
 
--- | The default compression level is 6 (that is, biased towards higher
--- compression at expense of speed).
+-- | The default t'CompressionLevel'.
 defaultCompression :: CompressionLevel
-defaultCompression = DefaultCompression
+defaultCompression = CompressionLevel 6
+
+-- Ideally we should use #{const Z_DEFAULT_COMPRESSION} = -1, whose meaning
+-- depends on zlib version and, strictly speaking, is not guaranteed to be 6.
+-- It would however interact badly with Eq / Ord instances.
 
 -- | No compression, just a block copy.
 noCompression :: CompressionLevel
-noCompression = CompressionLevel 0
+noCompression = CompressionLevel #{const Z_NO_COMPRESSION}
 
--- | The fastest compression method (less compression)
+-- | The fastest compression method (less compression).
 bestSpeed :: CompressionLevel
-bestSpeed = CompressionLevel 1
+bestSpeed = CompressionLevel #{const Z_BEST_SPEED}
 
 -- | The slowest compression method (best compression).
 bestCompression :: CompressionLevel
-bestCompression = CompressionLevel 9
+bestCompression = CompressionLevel #{const Z_BEST_COMPRESSION}
 
--- | A specific compression level between 0 and 9.
+-- | A specific compression level in the range @0..9@.
+-- Throws an error for arguments outside of this range.
+--
+-- * 0 stands for 'noCompression',
+-- * 1 stands for 'bestSpeed',
+-- * 6 stands for 'defaultCompression',
+-- * 9 stands for 'bestCompression'.
+--
 compressionLevel :: Int -> CompressionLevel
 compressionLevel n
   | n >= 0 && n <= 9 = CompressionLevel n
-  | otherwise        = error "CompressionLevel must be in the range 0..9"
+  | otherwise         = error "CompressionLevel must be in the range 0..9"
 
 fromCompressionLevel :: CompressionLevel -> CInt
-fromCompressionLevel DefaultCompression   = -1
-fromCompressionLevel NoCompression        = 0
-fromCompressionLevel BestSpeed            = 1
-fromCompressionLevel BestCompression      = 9
 fromCompressionLevel (CompressionLevel n)
            | n >= 0 && n <= 9 = int2cint n
-           | otherwise        = error "CompressLevel must be in the range 1..9"
+           | otherwise        = error "CompressLevel must be in the range 0..9"
 
 
 -- | This specifies the size of the compression window. Larger values of this

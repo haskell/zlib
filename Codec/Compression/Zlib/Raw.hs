@@ -28,7 +28,7 @@ module Codec.Compression.Zlib.Raw (
   DecompressParams(..), defaultDecompressParams,
 
   -- ** The compression parameter types
-  CompressionLevel,
+  CompressionLevel(..),
     defaultCompression,
     noCompression,
     bestSpeed,

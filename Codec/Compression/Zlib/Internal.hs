@@ -49,7 +49,7 @@ module Codec.Compression.Zlib.Internal (
     Stream.zlibFormat,
     Stream.rawFormat,
     Stream.gzipOrZlibFormat,
-  Stream.CompressionLevel,
+  Stream.CompressionLevel(..),
     Stream.defaultCompression,
     Stream.noCompression,
     Stream.bestSpeed,

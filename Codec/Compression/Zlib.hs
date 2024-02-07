@@ -32,7 +32,7 @@ module Codec.Compression.Zlib (
   DecompressParams(..), defaultDecompressParams,
 
   -- ** The compression parameter types
-  CompressionLevel,
+  CompressionLevel(..),
     defaultCompression,
     noCompression,
     bestSpeed,
