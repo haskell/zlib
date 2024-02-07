@@ -1,10 +1,11 @@
 See also http://pvp.haskell.org/faq
 
-0.7.0.0 Bodigrim <andrew.lelechenko@gmail.com> TBD
+0.7.0.0 Bodigrim <andrew.lelechenko@gmail.com> February 2024
 
  * Bump bundled `zlib` to 1.3.1.
  * Hide deprecated constructors of `CompressionLevel`, `Method`, `WindowBits`,
    `MemoryLevel`, `CompressionStrategy` and `Format`.
+ * Make `WindowBits`, `MemoryLevel` and `CompressionLevel` newtypes over `Int`.
  * Add smart constructors `rleStrategy` and `fixedStrategy`.
  * Add assorted `Eq`, `Ord`, `Typeable` and `Generic` instances.
  * Make flag `pkg-config` automatic and on by default.
@@ -14,9 +15,6 @@ See also http://pvp.haskell.org/faq
  * Export `DecompressError` from non-internal modules.
  * Fix compression/decompression of `ByteString` chunks > 4G.
  * Flip flag `non-blocking-ffi` to be `True` be default.
- * Make `WindowBits` a newtype over `Int`.
- * Make `MemoryLevel` a newtype over `Int`.
- * Make `CompressionLevel` a newtype over `Int`.
 
 0.6.3.0 Bodigrim <andrew.lelechenko@gmail.com> May 2022
 
