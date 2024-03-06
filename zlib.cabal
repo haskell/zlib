@@ -118,6 +118,7 @@ library
       pkgconfig-depends: zlib
     else
       -- On Windows zlib is shipped with GHC starting from 7.10
+      -- at mingw/lib/libz.a
       extra-libraries: z
 
 test-suite tests
