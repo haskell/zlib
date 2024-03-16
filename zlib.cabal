@@ -3,7 +3,7 @@ name:            zlib
 version:         0.7.0.0
 
 copyright:       (c) 2006-2016 Duncan Coutts
-license:         BSD3
+license:         BSD2
 license-file:    LICENSE
 author:          Duncan Coutts <duncan@community.haskell.org>
 maintainer:      Duncan Coutts <duncan@community.haskell.org>, Andrew Lelechenko <andrew.lelechenko@gmail.com>, Emily Pillmore <emilypi@cohomolo.gy>, Herbert Valerio Riedel <hvr@gnu.org>
