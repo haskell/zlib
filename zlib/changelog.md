@@ -1,5 +1,9 @@
 See also http://pvp.haskell.org/faq
 
+0.7.1.0 Julian Ospald <hasufell@posteo> March 2024
+
+* split zlib C sources into `zlib-clib` package
+
 0.7.0.0 Bodigrim <andrew.lelechenko@gmail.com> February 2024
 
  * Bump bundled `zlib` to 1.3.1.

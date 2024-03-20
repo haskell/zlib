@@ -31,19 +31,19 @@ jobs:
         key: ${{ runner.os }}-ghc-${{ steps.setup-haskell-cabal.outputs.ghc-version }}
     - name: Build
       run: |
-        cabal sdist -z -o .
+        cabal sdist -o . all
         cabal get zlib-*.tar.gz
-        cd zlib-*/
-        cabal build
+        echo "packages: ./$(ls zlib-clib-*.tar.gz | sed 's/\.tar\.gz//')/" > cabal.project
+        rm zlib-clib*.tar.gz
+        echo "          ./$(ls zlib-*.tar.gz | sed 's/\.tar\.gz//')/" >> cabal.project
+        cabal build all
     - name: Test
       run: |
-        cd zlib-*/
-        cabal test
+        cabal test all
     - name: Haddock
       if: matrix.ghc != '7.10' && matrix.ghc != '8.0'
       run: |
-        cd zlib-*/
-        cabal haddock
+        cabal haddock all
 
   bundled-c-zlib:
     runs-on: ${{ matrix.os }}
@@ -68,18 +68,18 @@ jobs:
         key: ${{ runner.os }}-ghc-${{ steps.setup-haskell-cabal.outputs.ghc-version }}
     - name: Build
       run: |
-        cabal sdist -z -o .
+        cabal sdist -o . all
         cabal get zlib-*.tar.gz
-        cd zlib-*/
-        cabal build -c 'zlib +bundled-c-zlib'
+        echo "packages: ./$(ls zlib-clib-*.tar.gz | sed 's/\.tar\.gz//')/" > cabal.project
+        rm zlib-clib*.tar.gz
+        echo "          ./$(ls zlib-*.tar.gz | sed 's/\.tar\.gz//')/" >> cabal.project
+        cabal build -c 'zlib +bundled-c-zlib' all
     - name: Test
       run: |
-        cd zlib-*/
-        cabal test -c 'zlib +bundled-c-zlib'
+        cabal test -c 'zlib +bundled-c-zlib' all
     - name: Haddock
       run: |
-        cd zlib-*/
-        cabal haddock
+        cabal haddock all
 
   wasi:
     runs-on: ubuntu-latest
@@ -109,7 +109,7 @@ jobs:
     - name: Build
       run: |
         mv cabal.project.wasi cabal.project.local
-        wasm32-wasi-cabal build --enable-tests
+        wasm32-wasi-cabal build --enable-tests all
         wasm32-wasi-cabal list-bin test:tests
     - name: Test
       run: |
@@ -130,4 +130,4 @@ jobs:
       run: |
         source ~/.ghcup/env
         cabal update
-        cabal test
+        cabal test all

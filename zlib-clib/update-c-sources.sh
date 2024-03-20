@@ -1,5 +1,6 @@
 #!/bin/sh
 
+set -x
 set -e pipefail
 
 curl -s http://zlib.net/zlib.tar.gz | tar xz
@@ -9,4 +10,5 @@ do
     mv zlib-*/"${csrc##*/}" cbits/
 done
 
-rm -rf zlib-*
+rm -rf zlib-*/ zlib-*.tar.gz
+

@@ -1,3 +1,6 @@
+packages: ./zlib/
+          ./zlib-clib/
+
 -- https://github.com/haskellari/splitmix/pull/73
 source-repository-package
   type: git
