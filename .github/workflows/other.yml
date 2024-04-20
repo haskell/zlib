@@ -113,6 +113,7 @@ jobs:
         wasm32-wasi-cabal list-bin test:tests
     - name: Test
       run: |
+        cd zlib
         wasmtime.sh $(wasm32-wasi-cabal list-bin test:tests)
 
   i386:
