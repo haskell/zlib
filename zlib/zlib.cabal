@@ -60,13 +60,14 @@ flag non-blocking-ffi
 flag pkg-config
   default:     True
   manual:      False
-  description: Use @pkg-config(1)@ to locate foreign @zlib@ library.
+  description: Use @pkg-config@ executable to locate foreign @zlib@ library.
 
 flag bundled-c-zlib
   default:     False
   manual:      True
-  description: Use the bundled zlib C sources.
-               For GHCJS and WASM this is the default.
+  description: Use @zlib-clib@ package with C sources instead of a system library.
+               C sources are used for GHCJS and WASM unconditionally
+               and on Windows unless @pkg-config@ flag is on.
 
 library
   exposed-modules: Codec.Compression.GZip,
@@ -99,15 +100,22 @@ library
   if flag(non-blocking-ffi)
     cpp-options:   -DNON_BLOCKING_FFI
 
-  if flag(bundled-c-zlib) || impl(ghcjs) || os(ghcjs) || arch(wasm32)
-    build-depends: zlib-clib
+  -- Cross-platform builds (such as JS and WASM) must have access
+  -- to C sources, so using zlib-clib unconditionally.
+  --
+  -- On Windows, zlib is shipped as part of GHC's mingw/lib directory,
+  -- which GHC always includes in its linker search path. However,
+  -- there is no guarantee that zlib1.dll (the corresponding shared library)
+  -- will be available on the user's PATH at runtime, making it risky to depend upon
+  -- (see https://github.com/haskell/zlib/issues/65 for what can go wrong).
+  -- Thus, we resort to zlib-clib unless pkg-config is available.
+  if flag(bundled-c-zlib) || impl(ghcjs) || os(ghcjs) || arch(wasm32) || (!flag(pkg-config) && os(windows))
+    build-depends: zlib-clib < 2
   else
     if flag(pkg-config)
       -- NB: pkg-config is available on windows as well when using msys2
       pkgconfig-depends: zlib
     else
-      -- On Windows zlib is shipped with GHC starting from 7.10
-      -- at mingw/lib/libz.a
       extra-libraries: z
 
 test-suite tests
