@@ -13,8 +13,8 @@ synopsis:        zlib C library bits
 description:     This package provides the zlib C library bits that Haskell
                  bindings can use to link against.
 build-type:      Simple
-extra-source-files: changelog.md
-                    README.md
+extra-doc-files: changelog.md
+                 README.md
 
 tested-with:     GHC == 8.0.2
                , GHC == 8.2.2
