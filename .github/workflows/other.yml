@@ -14,7 +14,17 @@ jobs:
       fail-fast: true
       matrix:
         os: [windows-latest, macOS-latest]
-        ghc: ['8.0', '8.2', '8.4', '9.2', 'latest']
+        ghc: ['9.2', '9.4', '9.6', 'latest']
+          ## macos-14 (arm, as of 2024-05-03 macos-latest) fails with ghc <= 9.0
+        include:
+        - os: windows-latest
+          ghc: '8.0'
+        - os: macos-13
+          ghc: '8.0'
+        - os: windows-latest
+          ghc: '8.2'
+        - os: macos-13
+          ghc: '8.2'
     steps:
     - uses: actions/checkout@v4
     - uses: haskell-actions/setup@v2
@@ -41,7 +51,7 @@ jobs:
       run: |
         cabal test all
     - name: Haddock
-      if: matrix.ghc != '7.10' && matrix.ghc != '8.0'
+      if: matrix.ghc != '8.0'
       run: |
         cabal haddock all
 
