@@ -36,7 +36,6 @@ library
   default-language: Haskell2010
 
   include-dirs: cbits
-  includes: zlib.h
 
   c-sources: cbits/adler32.c
              cbits/compress.c
