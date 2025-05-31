@@ -44,18 +44,18 @@ main = defaultMain $
       testProperty "compress works with BSes with non-zero offset"   prop_compress_nonzero_bs_offset
     ],
     testGroup "unit tests" [
-      testProperty "simple gzip case"          test_simple_gzip,
-      testProperty "detect bad CRC"            test_bad_crc,
-      testProperty "detect non-gzip"           test_non_gzip,
-      testProperty "detect custom dictionary"  test_custom_dict,
-      testProperty "detect inflate with wrong dict"   test_wrong_dictionary,
-      testProperty "detect inflate with right dict"   test_right_dictionary,
-      testProperty "handle trailing data"      test_trailing_data,
-      testProperty "multiple gzip members"     test_multiple_members,
-      testProperty "check small input chunks"  test_small_chunks,
-      testProperty "check empty input"         test_empty,
-      testProperty "check exception raised"    test_exception,
-      testProperty "check compress large chunk" test_compress_large_chunk
+      testProperty "simple gzip case"               $ once test_simple_gzip,
+      testProperty "detect bad CRC"                 $ once test_bad_crc,
+      testProperty "detect non-gzip"                $ once test_non_gzip,
+      testProperty "detect custom dictionary"       $ once test_custom_dict,
+      testProperty "detect inflate with wrong dict" $ once test_wrong_dictionary,
+      testProperty "detect inflate with right dict" $ once test_right_dictionary,
+      testProperty "handle trailing data"           $ once test_trailing_data,
+      testProperty "multiple gzip members"          $ once test_multiple_members,
+      testProperty "check small input chunks"       $ once test_small_chunks,
+      testProperty "check empty input"              $ once test_empty,
+      testProperty "check exception raised"         $ once test_exception,
+      testProperty "check compress large chunk"     $ once test_compress_large_chunk
     ]
   ]
 
