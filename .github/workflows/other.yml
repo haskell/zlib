@@ -51,7 +51,7 @@ jobs:
       run: |
         cabal test all
     - name: Haddock
-      if: matrix.ghc != '8.0'
+      if: matrix.ghc != '8.0' && matrix.ghc != '8.2'
       run: |
         cabal haddock all
 
