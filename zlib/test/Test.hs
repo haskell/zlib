@@ -288,12 +288,12 @@ test_exception = ioProperty $ do
     Right{} -> counterexample "expected exception" False
 
 test_compress_large_chunk :: Property
-test_compress_large_chunk = GZip.decompress (GZip.compress xs) === xs
+test_compress_large_chunk =
+  GZip.decompress (GZip.compress (BL.replicate len 0)) === BL.replicate len 0
   where
     len = case finiteBitSize (0 :: Int) of
       64 -> (1 `shiftL` 32) + 1
       _ -> 0 -- ignore it
-    xs = BL.fromStrict $ BS.replicate len 0
 
 toStrict :: BL.ByteString -> BS.ByteString
 #if MIN_VERSION_bytestring(0,10,0)
