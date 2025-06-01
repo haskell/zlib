@@ -289,8 +289,12 @@ test_exception = ioProperty $ do
 
 test_compress_large_chunk :: Property
 test_compress_large_chunk =
-  GZip.decompress (GZip.compress (BL.replicate len 0)) === BL.replicate len 0
+  counterexample
+    ("Expected " ++ show len ++ " zeros but got different result, please investigate manually")
+    (property test)
   where
+    test = GZip.decompress (GZip.compress (BL.replicate len 0)) == BL.replicate len 0
+
     len = case finiteBitSize (0 :: Int) of
       64 -> (1 `shiftL` 32) + 1
       _ -> 0 -- ignore it
