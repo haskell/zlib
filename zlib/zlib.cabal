@@ -130,4 +130,6 @@ test-suite tests
                    tasty            >= 0.8 && < 1.6,
                    tasty-quickcheck >= 0.8 && < 1
   ghc-options:     -Wall
-                   "-with-rtsopts=-M1G"
+
+  if impl(ghc >= 9.4)
+    ghc-options:   "-with-rtsopts=-M1G"
