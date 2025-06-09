@@ -118,7 +118,6 @@ jobs:
           wasi-${{ runner.os }}-${{ env.GHC_WASM_META_REV }}-flavour-${{ matrix.ghc }}-
     - name: Build
       run: |
-        mv cabal.project.wasi cabal.project.local
         wasm32-wasi-cabal build --enable-tests all
         wasm32-wasi-cabal list-bin test:tests
     - name: Test
