@@ -21,7 +21,9 @@ module Codec.Compression.Zlib (
 
   -- * Simple compression and decompression
   compress,
+  compressFromHandle,
   decompress,
+  decompressFromHandle,
   DecompressError(..),
 
   -- * Extended API with control over compression parameters
@@ -60,7 +62,8 @@ module Codec.Compression.Zlib (
 import Data.ByteString.Lazy (ByteString)
 
 import qualified Codec.Compression.Zlib.Internal as Internal
-import Codec.Compression.Zlib.Internal hiding (compress, decompress)
+import Codec.Compression.Zlib.Internal (DecompressParams, CompressParams, DecompressError, defaultCompressParams, defaultDecompressParams, CompressionLevel, defaultCompression, noCompression, bestSpeed, bestCompression, compressionLevel, Method, deflateMethod, WindowBits, defaultWindowBits, windowBits, MemoryLevel, defaultMemoryLevel, minMemoryLevel, maxMemoryLevel, memoryLevel, CompressionStrategy, defaultStrategy, filteredStrategy, huffmanOnlyStrategy, rleStrategy, fixedStrategy)
+import System.IO (Handle)
 
 
 -- | Decompress a stream of data in the zlib format,
@@ -75,6 +78,8 @@ import Codec.Compression.Zlib.Internal hiding (compress, decompress)
 decompress :: ByteString -> ByteString
 decompress = decompressWith defaultDecompressParams
 
+decompressFromHandle :: Handle -> IO ByteString
+decompressFromHandle = Internal.decompressFromHandle Internal.zlibFormat defaultDecompressParams
 
 -- | Like 'Codec.Compression.Zlib.decompress' but with the ability to specify various decompression
 -- parameters. Typical usage:
@@ -82,7 +87,7 @@ decompress = decompressWith defaultDecompressParams
 -- > decompressWith defaultCompressParams { ... }
 --
 decompressWith :: DecompressParams -> ByteString -> ByteString
-decompressWith = Internal.decompress zlibFormat
+decompressWith = Internal.decompress Internal.zlibFormat
 
 
 -- | Compress a stream of data into the zlib format.
@@ -97,6 +102,8 @@ decompressWith = Internal.decompress zlibFormat
 compress :: ByteString -> ByteString
 compress = compressWith defaultCompressParams
 
+compressFromHandle :: Handle -> IO ByteString
+compressFromHandle = Internal.compressFromHandle Internal.zlibFormat defaultCompressParams
 
 -- | Like 'Codec.Compression.Zlib.compress' but with the ability to specify various compression
 -- parameters. Typical usage:

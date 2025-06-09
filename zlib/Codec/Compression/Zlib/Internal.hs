@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP, RankNTypes, DeriveDataTypeable, BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) 2006-2015 Duncan Coutts
@@ -15,7 +17,9 @@ module Codec.Compression.Zlib.Internal (
 
   -- * Pure interface
   compress,
+  compressFromHandle,
   decompress,
+  decompressFromHandle,
 
   -- * Monadic incremental interface
   -- $incremental-compression
@@ -75,8 +79,8 @@ module Codec.Compression.Zlib.Internal (
   ) where
 
 import Prelude hiding (length)
-import Control.Monad (when)
-import Control.Exception (Exception, throw, assert)
+import Control.Monad (when, (>=>))
+import Control.Exception (Exception, throw, assert, throwIO)
 import Control.Monad.ST.Lazy hiding (stToIO)
 import Control.Monad.ST.Strict (stToIO)
 import qualified Control.Monad.ST.Unsafe as Unsafe (unsafeIOToST)
@@ -95,6 +99,8 @@ import GHC.IO (noDuplicate)
 import qualified Codec.Compression.Zlib.Stream as Stream
 import Codec.Compression.Zlib.ByteStringCompat (mkBS, withBS)
 import Codec.Compression.Zlib.Stream (Stream)
+import System.IO (Handle, hIsSeekable, hSeek, SeekMode(..))
+import Data.ByteString.Builder.Extra (defaultChunkSize)
 
 -- | The full set of parameters for compression. The defaults are
 -- 'defaultCompressParams'.
@@ -487,6 +493,32 @@ compress   format params = foldCompressStreamWithInput
 compressST format params = compressStreamST  format params
 compressIO format params = compressStreamIO  format params
 
+compressFromHandle
+  :: forall acc.
+     Stream.Format
+  -> CompressParams
+  -> Handle
+  -> (acc -> S.ByteString -> IO acc)
+  -> acc
+  -> IO acc
+compressFromHandle format params hndl cons nil = go nil (compressStreamIO format params)
+  where
+    go :: acc -> CompressStream IO -> IO acc
+    go !acc = \case
+      CompressInputRequired next ->
+        S.hGetSome hndl defaultChunkSize >>= next >>= go acc
+      CompressOutputAvailable outchunk next -> do
+        acc' <- acc `cons` outchunk
+        next >>= go acc'
+      CompressStreamEnd ->
+        pure acc
+
+  -- foldCompressStream
+  -- (S.hGetSome hndl defaultChunkSize >>=)
+  -- undefined -- (fmap . L.chunk)
+  -- (pure L.empty)
+  -- (compressStreamIO format params)
+
 -- | Chunk size must fit into t'CUInt'.
 compressStream :: Stream.Format -> CompressParams -> S.ByteString
                -> Stream (CompressStream Stream)
@@ -620,6 +652,19 @@ decompress   format params = foldDecompressStreamWithInput
                                (decompressStreamST format params)
 decompressST format params = decompressStreamST  format params
 decompressIO format params = decompressStreamIO  format params
+
+decompressFromHandle :: Stream.Format -> DecompressParams -> Handle -> IO L.ByteString
+decompressFromHandle format params hndl = foldDecompressStream
+  (S.hGetSome hndl defaultChunkSize >>=)
+  (fmap . L.chunk)
+  (\unconsumed -> do
+    isSeekable <- hIsSeekable hndl
+    when isSeekable $
+      hSeek hndl RelativeSeek (toInteger $ S.length unconsumed)
+    pure L.empty
+    )
+  throwIO
+  (decompressStreamIO format params)
 
 -- | Chunk size must fit into t'CUInt'.
 decompressStream :: Stream.Format -> DecompressParams
