@@ -94,16 +94,16 @@ jobs:
   wasi:
     runs-on: ubuntu-latest
     env:
-      GHC_WASM_META_REV: c0aa3bb7d88bb6ec809210e17658dd1ed64ba66c
+      GHC_WASM_META_REV: 7927129e42bcd6a54b9e06e26455803fa4878261
     strategy:
       matrix:
-        ghc: ['9.6', '9.8']
+        ghc: ['9.6', '9.8', '9.10', '9.12']
       fail-fast: false
     steps:
     - name: setup-ghc-wasm32-wasi
       run: |
         cd $(mktemp -d)
-        curl -L https://gitlab.haskell.org/ghc/ghc-wasm-meta/-/archive/$GHC_WASM_META_REV/ghc-wasm-meta.tar.gz | tar xz --strip-components=1
+        curl -L https://gitlab.haskell.org/haskell-wasm/ghc-wasm-meta/-/archive/$GHC_WASM_META_REV/ghc-wasm-meta.tar.gz | tar xz --strip-components=1
         ./setup.sh
         ~/.ghc-wasm/add_to_github_path.sh
       env:
