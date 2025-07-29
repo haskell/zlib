@@ -80,8 +80,7 @@ library
 
   default-language: Haskell2010
 
-  other-extensions: CPP, ForeignFunctionInterface, RankNTypes, BangPatterns,
-                    DeriveDataTypeable
+  other-extensions: CPP, ForeignFunctionInterface, RankNTypes, BangPatterns
   other-extensions: DeriveGeneric
   other-extensions: CApiFFI
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, RankNTypes, DeriveDataTypeable, BangPatterns #-}
+{-# LANGUAGE CPP, RankNTypes, BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE Trustworthy #-}
 -----------------------------------------------------------------------------
@@ -80,7 +80,6 @@ import Control.Exception (Exception, throw, assert)
 import Control.Monad.ST.Lazy hiding (stToIO)
 import Control.Monad.ST.Strict (stToIO)
 import qualified Control.Monad.ST.Unsafe as Unsafe (unsafeIOToST)
-import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Data.Bits (toIntegralSized)
 import qualified Data.ByteString.Lazy as L
@@ -118,7 +117,6 @@ data CompressParams = CompressParams {
   ( Eq       -- ^ @since 0.7.0.0
   , Ord      -- ^ @since 0.7.0.0
   , Show
-  , Typeable -- ^ @since 0.7.0.0
   , Generic  -- ^ @since 0.7.0.0
   )
 
@@ -150,7 +148,6 @@ data DecompressParams = DecompressParams {
   ( Eq       -- ^ @since 0.7.0.0
   , Ord      -- ^ @since 0.7.0.0
   , Show
-  , Typeable -- ^ @since 0.7.0.0
   , Generic  -- ^ @since 0.7.0.0
   )
 
@@ -250,7 +247,6 @@ data DecompressError =
   deriving
   ( Eq
   , Ord     -- ^ @since 0.7.0.0
-  , Typeable
   , Generic -- ^ @since 0.7.0.0
            )
 

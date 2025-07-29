@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE CApiFFI #-}
 -----------------------------------------------------------------------------
@@ -121,7 +121,6 @@ import Control.Exception (assert)
 import Data.Bits (toIntegralSized)
 import Data.Coerce (coerce)
 import Data.Maybe (fromMaybe)
-import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 #ifdef DEBUG
 import System.IO (hPutStrLn, stderr)
@@ -580,7 +579,7 @@ fromFlush Block     = #{const Z_BLOCK}
 -- variations.
 --
 data Format = GZip | Zlib | Raw | GZipOrZlib
-  deriving (Eq, Ord, Enum, Bounded, Show, Typeable
+  deriving (Eq, Ord, Enum, Bounded, Show
               , Generic
            )
 
@@ -622,7 +621,7 @@ formatSupportsDictionary _    = False
 -- | The compression method
 --
 data Method = Deflated
-  deriving (Eq, Ord, Enum, Bounded, Show, Typeable
+  deriving (Eq, Ord, Enum, Bounded, Show
               , Generic
            )
 
@@ -645,7 +644,6 @@ newtype CompressionLevel = CompressionLevel Int
   ( Eq
   , Ord -- ^ @since 0.7.0.0
   , Show
-  , Typeable
   , Generic
   )
 
@@ -705,7 +703,6 @@ newtype WindowBits = WindowBits Int
   ( Eq
   , Ord
   , Show
-  , Typeable
   , Generic
   )
 
@@ -764,7 +761,6 @@ newtype MemoryLevel = MemoryLevel Int
   ( Eq
   , Ord -- ^ @since 0.7.0.0
   , Show
-  , Typeable
   , Generic
   )
 
@@ -812,7 +808,7 @@ data CompressionStrategy =
   -- ^ @since 0.7.0.0
   | Fixed
   -- ^ @since 0.7.0.0
-  deriving (Eq, Ord, Enum, Bounded, Show, Typeable
+  deriving (Eq, Ord, Enum, Bounded, Show
               , Generic
            )
 
