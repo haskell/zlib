@@ -25,10 +25,6 @@ import qualified Data.ByteString      as BS
 import qualified Data.ByteString.Internal as BS
 #endif
 import System.IO
-#if !(MIN_VERSION_base(4,6,0))
-import Prelude hiding (catch)
-#endif
-
 
 main :: IO ()
 main = defaultMain $

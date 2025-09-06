@@ -112,9 +112,7 @@ import qualified Data.ByteString.Unsafe as B
 import Data.ByteString (ByteString)
 import Control.Applicative (Applicative(..))
 import Control.Monad (ap,liftM)
-#if MIN_VERSION_base(4,9,0)
 import qualified Control.Monad.Fail as Fail
-#endif
 import Control.Monad.ST.Strict
 import Control.Monad.ST.Unsafe
 import Control.Exception (assert)
@@ -360,16 +358,12 @@ instance Monad Stream where
 --  m >>= f = (m `thenZ` \a -> consistencyCheck `thenZ_` returnZ a) `thenZ` f
   (>>)   = (*>)
 
-#if !MIN_VERSION_base(4,9,0)
-  fail   = (finalise >>) . failZ
-#elif !MIN_VERSION_base(4,13,0)
+#if !MIN_VERSION_base(4,13,0)
   fail   = Fail.fail
 #endif
 
-#if MIN_VERSION_base(4,9,0)
 instance Fail.MonadFail Stream where
   fail   = (finalise >>) . failZ
-#endif
 
 returnZ :: a -> Stream a
 returnZ a = Z $ \_ inBuf outBuf outOffset outLength ->
