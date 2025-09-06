@@ -35,6 +35,7 @@ tested-with:     GHC == 8.0.2
                , GHC == 9.8.4
                , GHC == 9.10.2
                , GHC == 9.12.2
+               , GHC == 9.14.1
 
 extra-source-files: changelog.md
                     README.md
