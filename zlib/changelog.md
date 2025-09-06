@@ -1,5 +1,10 @@
 See also http://pvp.haskell.org/faq
 
+0.7.1.1 Bodigrim <andrew.lelechenko@gmail.com> September 2025
+
+* Allow newer versions of dependencies.
+* Fix new GHC warnings.
+
 0.7.1.0 Bodigrim <andrew.lelechenko@gmail.com> April 2024
 
 * Split zlib C sources into `zlib-clib` package (thanks @hasufell).
