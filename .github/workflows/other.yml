@@ -15,24 +15,19 @@ jobs:
       matrix:
         os: [windows-latest, macOS-latest]
         ghc: ['9.2', '9.4', '9.6', '9.8', 'latest']
-          ## macos-14 (arm, as of 2024-05-03 macos-latest) fails with ghc <= 9.0
         include:
         - os: windows-latest
           ghc: '8.0'
-        - os: macos-13
-          ghc: '8.0'
         - os: windows-latest
           ghc: '8.2'
-        - os: macos-13
-          ghc: '8.2'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
         cabal-update: true
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       name: Cache cabal stuff
       with:
         path: |
@@ -63,13 +58,13 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
         ghc: ['latest']
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
         cabal-update: true
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       name: Cache cabal stuff
       with:
         path: |
@@ -108,8 +103,8 @@ jobs:
         ~/.ghc-wasm/add_to_github_path.sh
       env:
         FLAVOUR: ${{ matrix.ghc }}
-    - uses: actions/checkout@v4
-    - uses: actions/cache@v4
+    - uses: actions/checkout@v5
+    - uses: actions/cache@v5
       with:
         path: |
           ~/.ghc-wasm/.cabal/store
