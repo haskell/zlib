@@ -79,7 +79,7 @@ decompress = decompressWith defaultDecompressParams
 -- | Like 'Codec.Compression.Zlib.decompress' but with the ability to specify various decompression
 -- parameters. Typical usage:
 --
--- > decompressWith defaultCompressParams { ... }
+-- > decompressWith defaultDecompressParams { ... }
 --
 decompressWith :: DecompressParams -> ByteString -> ByteString
 decompressWith = Internal.decompress zlibFormat
