@@ -1,2 +1,3 @@
 apt: zlib1g-dev
 haddock: >= 8.2
+installed: -bytestring
