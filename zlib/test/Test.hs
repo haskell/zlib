@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
-module Main where
+module Main (main) where
 
 import Codec.Compression.Zlib.Internal
 import qualified Codec.Compression.Zlib     as Zlib
@@ -124,15 +125,15 @@ prop_truncated :: Format -> Property
 prop_truncated format =
    forAll shortStrings $ \bs ->
      all (truncated decomp)
-         (init (BL.inits (comp bs)))
+         (BL.inits (BL.dropEnd 1 (comp bs)))
   -- All the initial prefixes of a valid compressed stream should be detected
   -- as truncated.
   where
     comp   = compress format defaultCompressParams
     decomp = decompressST format defaultDecompressParams
     truncated :: (forall s. DecompressStream (ST s)) -> BL.ByteString -> Bool
-    truncated = foldDecompressStreamWithInput (\_ r -> r) (\_ -> False)
-                  (\err -> case err of TruncatedInput -> True; _ -> False)
+    truncated = foldDecompressStreamWithInput (\_ r -> r) (const False)
+                  (\case TruncatedInput -> True; _ -> False)
 
     shortStrings = sized $ \sz -> resize (sz `div` 6) arbitrary
 
@@ -345,7 +346,7 @@ assertDecompressOkChunks :: Handle -> ([BS.ByteString] -> Property) -> Decompres
 assertDecompressOkChunks hnd callback = fmap (either id callback) .
     foldDecompressStream
       (BS.hGet hnd 4000 >>=)
-      (\chunk -> liftM (liftM (chunk:)))
+      (\chunk -> fmap (fmap (chunk:)))
       (\_ -> return $ Right [])
       (\err -> return $ Left $ expected "decompress ok" (show err))
 

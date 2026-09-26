@@ -125,7 +125,9 @@ test-suite tests
                    Test.Codec.Compression.Zlib.Stream
   hs-source-dirs:  test
   default-language: Haskell2010
-  build-depends:   base, bytestring, zlib,
+  build-depends:   base,
+                   bytestring >= 0.11.1.0,
+                   zlib,
                    QuickCheck       == 2.*,
                    tasty            >= 0.8 && < 1.6,
                    tasty-quickcheck >= 0.8 && < 1
