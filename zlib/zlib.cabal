@@ -135,3 +135,5 @@ test-suite tests
 
   if impl(ghc >= 9.4)
     ghc-options:   "-with-rtsopts=-M1G"
+  if impl(ghc >= 8.10) && impl(ghc < 9.0)
+    build-depends: QuickCheck < 2.19
