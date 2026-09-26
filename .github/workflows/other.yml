@@ -11,15 +11,9 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
       matrix:
         os: [windows-latest, macOS-latest]
         ghc: ['9.2', '9.4', '9.6', '9.8', 'latest']
-        include:
-        - os: windows-latest
-          ghc: '8.0'
-        - os: windows-latest
-          ghc: '8.2'
     steps:
     - uses: actions/checkout@v5
     - uses: haskell-actions/setup@v2
