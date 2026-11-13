@@ -1,3 +1,7 @@
+1.4 Bodigrim <andrew.lelechenko@gmail.com> November 2026
+
+* update to zlib 1.4
+
 1.3.2 Bodigrim <andrew.lelechenko@gmail.com> May 2026
 
 * update to zlib 1.3.2
